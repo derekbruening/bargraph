@@ -9,7 +9,7 @@ function mailnospam(user, site, display) {
 }
 // End -->
 </script>
-<title>Filled Clustered/Stacked Bar Graph Generator</title>
+<title>Clustered/Stacked Filled Bar Graph Generator</title>
 </head>
 
 <body bgcolor="ffffff" text="000000" link="000088" vlink="006600">
@@ -21,7 +21,7 @@ function mailnospam(user, site, display) {
 </tr></table>
 
 <center>
-<h1>Filled Clustered/Stacked Bar Graph Generator</h1>
+<h1>Clustered/Stacked Filled Bar Graph Generator</h1>
 </center>
 
 <!--------------------------------------------------------------------------->
@@ -33,15 +33,15 @@ function mailnospam(user, site, display) {
 
 <p>
 <image align="right" src="simp_alg_stacked_sm.png">
-I wanted a scriptable bar graph generator for my PhD thesis that
-supported stacked and clustered bars, but couldn't find one that played
-well with latex and had all the features I wanted, so I built my own.  I
-followed the scheme of <a
+I wanted a scriptable bar graph generator for my <a href="/derek/phd.html">PhD
+thesis</a> that supported stacked and clustered bars, but couldn't find one
+that played well with latex and had all the features I wanted, so I built
+my own.  I followed the scheme of <a
 href="http://www.togaware.com/datamining/gdatamine/barchart">Graham
 Williams' barchart shell script</a> to have gnuplot produce fig output and
-then mangle it to fill in the bars.  I added support for more than just two or
-three clustered datasets and support for stacked bars, as well as automatic
-averaging and other features.
+then mangle it to fill in the bars.  I added support for more than just two
+or three clustered datasets and support for stacked bars, as well as
+automatic averaging and other features.
 </p>
 
 <p>The script is <a href="bargraph.pl">bargraph.pl</a>.</p>
@@ -98,20 +98,24 @@ also be selected via <tt>-fig</tt>.  This data is then sent to fig2dev to
 produce a final figure.
 </p>
 
+<p>I keep my data in .perf files and have my Makefile generate .eps for
+latex and .png for slides or web pages.  See <a href="#Bitmap">converting
+to non-vector formats</a> for notes on avoiding aliasing and other problems
+when creating images, and for some Makefile rules.  My script magnifies 2x
+when converting to png to avoid these problems, but for most uses that's
+not enough and you should follow <a href="#Bitmap">my suggestions</a>
+rather than using -png.
 </p>
 
-<p>I keep my data in .perf files and have my Makefile generate .eps for
-latex and .png for slides or web pages.
-</p>
+<p>The following sections describe each graph parameter.  Comments can be
+included in a graph file by using the <tt>#</tt> character.</p>
 
 <!--------------------------------------------------------------------------->
 <table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>
 <tr><td>&nbsp;<font size=+2>
-<strong>Graph Parameters</strong>
+<strong>Multiple Datasets</strong>
 </font></td></tr></table>
 <!--------------------------------------------------------------------------->
-
-<h3>Multiple Datasets</h3>
 
 <ul>
 <li><p><a name="cluster"><strong>=cluster</strong></a><br>
@@ -246,7 +250,12 @@ latex and .png for slides or web pages.
 </p></li>
 </ul>
 
-<h3>Data Manipulation</h3>
+<!--------------------------------------------------------------------------->
+<table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>
+<tr><td>&nbsp;<font size=+2>
+<strong>Data Manipulation</strong>
+</font></td></tr></table>
+<!--------------------------------------------------------------------------->
 
 <ul>
 
@@ -302,7 +311,13 @@ latex and .png for slides or web pages.
 
 </ul>
 
-<h3>Graph Display</h3>
+<!--------------------------------------------------------------------------->
+<table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>
+<tr><td>&nbsp;<font size=+2>
+<strong>Graph Display</strong>
+</font></td></tr></table>
+<!--------------------------------------------------------------------------->
+
 <ul>
 
 <li><p><strong>title=</strong><br>
@@ -391,28 +406,12 @@ latex and .png for slides or web pages.
 <!--------------------------------------------------------------------------->
 <table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>
 <tr><td>&nbsp;<font size=+2>
-<strong>Caveats and Future Work</strong>
-</font></td></tr></table>
-<!--------------------------------------------------------------------------->
-
-<ul>
-<li>text bounding box estimates FIXME</li>
-
-<li>value display option</li>
-
-<li>legend placement not require hardcoded values</li>
-</ul>
-
-<!--------------------------------------------------------------------------->
-<table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>
-<tr><td>&nbsp;<font size=+2>
 <strong><a name="Examples">Examples</a></strong>
 </font></td></tr></table>
 <!--------------------------------------------------------------------------->
 
-<p>&nbsp;</p>
-
-<p>Simple bar graph</p>
+<p>A simple bar graph with a harmonic mean average.
+<a href="talk-mem-vscode.perf">control file</a></p>
 <img src="talk-mem-vscode.png">
 
 <p>Clustered bar graph</p>
@@ -445,7 +444,87 @@ WARNING: missing value for ammp in dataset 1
 <!--------------------------------------------------------------------------->
 <table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>
 <tr><td>&nbsp;<font size=+2>
-<strong>Contact</a></strong>
+<strong><a name="Bitmap">Converting to Non-Vector Formats</a></strong>
+</font></td></tr></table>
+<!--------------------------------------------------------------------------->
+
+<p>
+<img align="right" width=400 src="wset-50-talk_bad.png">
+Because <tt>fig2dev</tt> does not perform anti-aliasing, converting
+directly to an image format can result in very poor quality lines and
+text.  This problem is compounded if that image is subsequently resized
+without any anti-aliasing, such as by your web browser: a case in point
+is the image on the right.
+</p>
+
+<p>
+The solution is to magnify the vector data to at least 4x and then generate
+a lossless bitmap format, such as TIFF.  From there, have a real image
+manipulator (such as <tt>mogrify</tt>) resize it to the size you want.  For
+displaying in html, you should choose the final size at this point -- you
+cannot really make browser-resizable bar graphs.
+</p>
+
+<p>
+Below are my Makefile rules for creating the .png images for this page,
+including removing the 2nd TIFF page (I don't know why fig2dev generates
+it).  Note that mogrify preserves the image's aspect ratio by default, so
+asking for 700x700 asks for the image to be shrunk so that its longest
+dimension is 700.
+
+<pre>
+SIZE=700
+%.png: %.tiff
+	mogrify -resize ${SIZE}x${SIZE} -format png $<
+	rm $@.1
+	mv $@.0 $@
+%.tiff: %.perf
+	bargraph.pl -fig $< | fig2dev -L tiff -m 4 > $@
+</pre>
+</p>
+
+<p>
+For including in slides, <tt>PowerPoint</tt> does perform anti-aliasing,
+and I found that going straight to png from fig with a magnification of
+4x was enough to be able to resize the image in <tt>PowerPoint</tt> and
+have it look good at any size:
+<pre>
+%.png: %.perf
+	bargraph.pl -fig $< | fig2dev -L png -m 4 > $@
+</pre>
+</p>
+
+<!--------------------------------------------------------------------------->
+<table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>
+<tr><td>&nbsp;<font size=+2>
+<strong>Caveats and Future Work</strong>
+</font></td></tr></table>
+<!--------------------------------------------------------------------------->
+
+<p>
+Some issues and future work with my current script:
+
+<ul>
+
+<li>When the legend is outside of the graph bounds, its bounding box size
+must be estimated in order to obtain the correct overall bounding box.  I
+use a hack to do this now that uses a maximum size per character.
+Ideally the actual bounding box would be computed.</li>
+
+<li>It would be nice to have an option to automatically place a value
+label, especially for value beyond a specified maximum.</li>
+
+<li>Another nice feature would be to avoid hardcoded x and y coordinates
+when specifying legend placement and instead use keywords to show where
+outside the graph to put it, or to automatically find an empty spot inside
+the graph.</li>
+
+</ul>
+
+<!--------------------------------------------------------------------------->
+<table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>
+<tr><td>&nbsp;<font size=+2>
+<strong>Contact</strong>
 </font></td></tr></table>
 <!--------------------------------------------------------------------------->
 

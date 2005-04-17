@@ -14,6 +14,12 @@ function mailnospam(user, site, display) {
 
 <body bgcolor="ffffff" text="000000" link="000088" vlink="006600">
 
+<table width="100%" cellspacing=0 cellpadding=5 border=0>
+<tr><td align="right"><image src="wset-bb_sm.png"></td>
+    <td width=100>&nbsp;</td>
+    <td align="left"><image src="heapacct_sm.png"></td>
+</tr></table>
+
 <center>
 <h1>Filled Clustered/Stacked Bar Graph Generator</h1>
 </center>
@@ -25,7 +31,9 @@ function mailnospam(user, site, display) {
 </font></td></tr></table>
 <!--------------------------------------------------------------------------->
 
-<p>I wanted a scriptable bar graph generator for my PhD thesis that
+<p>
+<image align="right" src="simp_alg_stacked_sm.png">
+I wanted a scriptable bar graph generator for my PhD thesis that
 supported stacked and clustered bars, but couldn't find one that played
 well with latex and had all the features I wanted, so I built my own.  I
 followed the scheme of <a
@@ -62,6 +70,8 @@ floating point benchmark groups
 <!--------------------------------------------------------------------------->
 
 <p>
+The script's usage message shows the command-line options:
+
 <pre>
 Usage: bargraph.pl [-gnuplot] [-fig] [-pdf] [-png] [-eps] &lt;graphfile&gt;
 
@@ -73,11 +83,325 @@ Graph parameter types:
 &lt;value_param&gt;=&lt;value&gt;
 =&lt;bool_param&gt;
 </pre>
+
+The script takes in a single file that specifies the data to graph and
+control parameters for customizing the graph.  The parameters must precede
+the data in the file.
+</p>
+
+<p>
+The script's output, by default, is encapsulated postscript (.eps).  It
+first produces data to send to gnuplot, which can be seen by specifying
+<tt>-gnuplot</tt>.  Next, the script takes the resulting fig output from
+gnuplot and post-processes it to fill in the bars.  The final fig data can
+also be selected via <tt>-fig</tt>.  This data is then sent to fig2dev to
+produce a final figure.
+</p>
+
 </p>
 
 <p>I keep my data in .perf files and have my Makefile generate .eps for
 latex and .png for slides or web pages.
 </p>
+
+<!--------------------------------------------------------------------------->
+<table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>
+<tr><td>&nbsp;<font size=+2>
+<strong>Graph Parameters</strong>
+</font></td></tr></table>
+<!--------------------------------------------------------------------------->
+
+<h3>Multiple Datasets</h3>
+
+<ul>
+<li><p><a name="cluster"><strong>=cluster</strong></a><br>
+     Indicates that there are multiple datasets that should be displayed as
+     clustered bars.  This command also provides the names of the datasets.
+     The character following =cluster is taken as a delimiter separating
+     the rest of the line into strings naming each dataset.  Some examples:
+
+     <pre>
+     =cluster;Irish elk;Dodo birds;Coelecanth
+     =cluster Monday Tuesday Wednesday Thursday Friday
+     =cluster+Fast; slow+Slow; fast
+     </pre>
+
+     The data itself must either be in <a href="#table">table format</a> or
+     each dataset must be separated by <a href="#multi">=multi</a>.
+</p></li>
+
+<li><p><strong>=stacked</strong><br>
+     Just like <a href="#cluster">=cluster</a>, this indicates that there
+     are multiple datasets, but to be displayed as stacked bars rather than
+     clustered bars.  The data must be either in <a href="#table">table
+     format</a> or delimited by <a href="#multi">=multi</a>.  The names of
+     the datasets are delimited as with <a href="#cluster">=cluster</a>:
+
+     <pre>
+     =stacked,Irish elk,Dodo birds,Coelecanth
+     </pre>
+
+</p></li>
+
+<li><p><a name="table"><strong>=table</strong></a><br>
+     Indicates that the data will be listed in columns.  This is much more
+     compact and readable than listing each column separately, though that
+     can be done using the <a href="#multi">=multi</a> separation marker.
+     An example:
+
+     <pre>
+     age     37  9 22 
+     height  17 12 20 
+     weight  92 52 84 
+     </pre>     
+</p></li>
+
+<li><p><a name="multi"><strong>=multi</strong></a><br>
+     When data is not in <a href="#table">table format</a>, multiple
+     datasets must be separated by this marker.  For example:
+     <pre>
+     age    37
+     height 17
+     weight 92
+     =multi
+     age     9
+     height 12
+     weight 52
+     =multi
+     age    22
+     height 20
+     weight 84
+     </pre>     
+</p></li>
+
+<li><p><strong>column=</strong><br>
+    Some of my data is produced by other scripts that place other fields on
+    each line.  For example, one scripts shows me the ratio of time,
+    working set size, and virtual memory size between two benchmark runs.
+    Rather than requiring another script to strip out the proper column of
+    numbers, you can simply specify which column contains the numbers to
+    graph with this parameter.  The column numbers begin at 1, which is
+    assumed to always be the benchmark name.  The special token
+    <tt>last</tt> can be used to indicate the final column.  Examples:
+
+    <pre>
+    column=last
+    column=4
+    </pre>
+</p></li>
+
+<li><p><strong>colors=</strong><br>
+    The script was tuned with sets of colors designed to have maximum
+    contrast when printed.  Custom colors can be chosen using this
+    parameter.  Available color names are:
+
+    </p><p>
+    <table cellspacing=0 cellpadding=5 border=0>
+    <tr><td width=30 rowspan=12>&nbsp;</td>
+        <td colspan=2><em>color graphs</em></td>
+        <td width=30>&nbsp</td>
+        <td colspan=2><em>grayscale graphs</em></td></tr>
+    <tr><td>black</td><td width=50 bgcolor="#000000">&nbsp;</td><td>&nbsp;</td>
+        <td>black</td><td width=50 bgcolor="#000000">&nbsp;</td>
+    </tr>
+    <tr><td>grey</td><td bgcolor="#dddddd">&nbsp;</td><td>&nbsp;</td>
+        <td>grey1</td><td bgcolor="#222222">&nbsp;</td>
+    </tr>
+    <tr><td>yellow</td><td bgcolor="#ffff00">&nbsp;</td><td>&nbsp;</td>
+        <td>grey2</td><td bgcolor="#444444">&nbsp;</td>
+    </tr>
+    <tr><td>dark_blue</td><td bgcolor="#0000ff">&nbsp;</td><td>&nbsp;</td>
+        <td>grey3</td><td bgcolor="#666666">&nbsp;</td>
+    </tr>
+    <tr><td>med_blue</td><td bgcolor="#6666ff">&nbsp;</td><td>&nbsp;</td>
+        <td>grey4</td><td bgcolor="#888888">&nbsp;</td>
+    </tr>
+    <tr><td>light_blue</td><td bgcolor="#aaaaff">&nbsp;</td><td>&nbsp;</td>
+        <td>grey5</td><td bgcolor="#aaaaaa">&nbsp;</td>
+    </tr>
+    <tr><td>cyan</td><td bgcolor="#00ffff">&nbsp;</td><td>&nbsp;</td>
+        <td>grey6</td><td bgcolor="#cccccc">&nbsp;</td>
+    </tr>
+    <tr><td>light_green</td><td bgcolor="#77ff00">&nbsp;</td><td>&nbsp;</td>
+        <td>grey7</td><td bgcolor="#eeeeee">&nbsp;</td>
+    </tr>
+    <tr><td>dark_green</td><td bgcolor="#00aa00">&nbsp;</td><td>&nbsp;</td>
+        <td></td><td></td>
+    </tr>
+    <tr><td>magenta</td><td bgcolor="#dd00ff">&nbsp;</td><td>&nbsp;</td>
+        <td></td><td></td>
+    </tr>
+    <tr><td>red</td><td bgcolor="#ff0000">&nbsp;</td><td>&nbsp;</td>
+        <td></td><td></td>
+    </tr>
+    </table>
+    </p><p>
+
+    Colors should be separated by commas and listed in order, specifying
+    the color for each dataset.  An example:
+    <pre>
+    colors=black,yellow,red,med_blue,dark_green
+    </pre>
+
+</p></li>
+</ul>
+
+<h3>Data Manipulation</h3>
+
+<ul>
+
+<li><p><strong>=invert</strong><br>
+    Each datum is inverted before graphing (<tt>datum</tt> becomes <tt>1/datum</tt>).
+</p></li>
+
+<li><p><strong>=percent</strong><br>
+    Each datum is transformed to <tt>(datum - 1) * 100</tt> before graphing.
+</p></li>
+
+<li><p><strong>=base1</strong><br>
+    Each datum is transformed to <tt>(datum - 1)</tt> before graphing.
+</p></li>
+
+<li><p><strong>=sort</strong><br>
+    The benchmarks are sorted.
+</p></li>
+
+<li><p><strong>=sortbmarks</strong><br>
+    The benchmarks are sorted into SPEC benchmark categories: first SPEC
+    CPU 2000 FP, then SPEC CPU 2000 INT, then SPEC JVM 98.  Any benchmarks
+    not in these categories are placed at the end.  This was very useful
+    for my thesis.
+</p></li>
+
+<li><p><a name="arithmean"><strong>=arithmean</strong></a><br>
+    The arithmetic mean is calculated and displayed under the label "mean"
+    unless specified otherwise by the <a href="#meanlabel">meanlabel</a>
+    parameter.  The mean is always placed at the end of the benchmarks.
+</p></li>
+
+<li><p><a name="harmean"><strong>=harmean</strong></a><br>
+    The harmonic mean is calculated and displayed under the label "har_mean"
+    unless specified otherwise by the <a href="#meanlabel">meanlabel</a>
+    parameter.  The mean is always placed at the end of the benchmarks.
+</p></li>
+
+<li><p><a name="meanlabel"><strong>meanlabel=</strong></a><br>
+    Specifies a different label for the <a href="#arithmean">arithmetic</a>
+    or <a href="#harmean">harmonic</a> mean.
+</p></li>
+
+<li><p><strong>min=</strong><br>
+    Sets the minimum y value displayed.  Any values below this are simply
+    cut off at this value.
+</p></li>
+
+<li><p><strong>max=</strong><br>
+    Sets the maximum y value displayed.  Any values above this are simply
+    cut off at this value.
+</p></li>
+
+</ul>
+
+<h3>Graph Display</h3>
+<ul>
+
+<li><p><strong>title=</strong><br>
+    Sets the title of the graph.
+</p></li>
+
+<li><p><strong>xlabel=</strong><br>
+    Sets the label for the x axis.
+</p></li>
+
+<li><p><strong>ylabel=</strong><br>
+    Sets the label for the y axis.
+</p></li>
+
+<li><p><strong>yformat=</strong><br>
+    Specifies the format for the y tic mark labels.  This is passed
+    straight to gnuplot, which requires a printf-style format specifier
+    that can accept a double-precision value.  Examples:
+    <pre>
+    yformat=%g
+    yformat=%4.2f%%
+    </pre>
+</p></li>
+
+<li><p><strong>=norotate</strong><br>
+    By default, x tic mark labels are placed vertically.  This indicates
+    that they should not be rotated and should remain horizontal.
+</p></li>
+
+<li><p><strong>xlabelshift=</strong><br>
+    This is passed straight to gnuplot.  The default is "0,-1".  An example
+    is moving the x axis label closer to the x axis:
+    <pre>
+    xlabelshift=0,1
+    </pre>
+</p></li>
+
+<li><p><strong>=noxlabels</strong><br>
+    This specifies that x tic mark labels should not be displayed.
+</p></li>
+
+<li><p><strong>=noupperright</strong><br>
+    Specifies that the top and right side lines delimiting the graph area
+    should be omitted.
+</p></li>
+
+<li><p><strong>=gridx</strong><br>
+    Requests that x grid lines be displayed.
+</p></li>
+
+<li><p><strong>=nogridy</strong><br>
+    Requests that y grid lines not be displayed (they are by default).
+</p></li>
+
+<li><p><strong>legendx=</strong><br>
+    Sets the x location of the legend.  By default the legend is placed at
+    the top of the graph centered horizontally.  To move it to another
+    location may take trial and error to get the coordinates right.
+</p></li>
+
+<li><p><strong>legendy=</strong><br>
+    Sets the y location of the legend.  By default the legend is placed at
+    the top of the graph centered horizontally.  To move it to another
+    location may take trial and error to get the coordinates right.
+</p></li>
+
+<li><p><strong>extraops=</strong><br>
+    Specifies an option to pass straight through to gnuplot, for
+    fine-grained control over the graph without having to use a separate
+    tool chain step.  I typically use this to place value labels or to set
+    the shape of the graph.  Examples:
+    <pre>
+    # add a text label for a value that goes beyond the max= value
+    extraops=set label "55" at 2.3,15.6 right font "Times,10"
+
+    # stretch the graph vertically
+    extraops=set size 1,1.4
+
+    # stretch the graph horizontally
+    extraops=set size 1.2,1
+    </pre>
+</p></li>
+
+</ul>
+
+<!--------------------------------------------------------------------------->
+<table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>
+<tr><td>&nbsp;<font size=+2>
+<strong>Caveats and Future Work</strong>
+</font></td></tr></table>
+<!--------------------------------------------------------------------------->
+
+<ul>
+<li>text bounding box estimates FIXME</li>
+
+<li>value display option</li>
+
+<li>legend placement not require hardcoded values</li>
+</ul>
 
 <!--------------------------------------------------------------------------->
 <table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>
@@ -101,6 +425,9 @@ latex and .png for slides or web pages.
 <img src="heapacct.png">
 
 <p>Stacked non-100% bar graph</p>
+<pre>
+extraops=set size 1,1.4
+</pre>
 <img src="simp_alg_stacked.png">
 
 <p>Display explicit values</p>

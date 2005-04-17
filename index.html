@@ -1,0 +1,133 @@
+<!doctype html public "-//IETF//DTD HTML//EN">
+<html>
+<head>
+<script type="text/javascript">
+<!-- Begin
+function mailnospam(user, site, display) {
+  document.write('<a href=\"mailto:' + user + '@' + site + '\">');
+  document.write(display + '</a>');
+}
+// End -->
+</script>
+<title>Filled Clustered/Stacked Bar Graph Generator</title>
+</head>
+
+<body bgcolor="ffffff" text="000000" link="000088" vlink="006600">
+
+<center>
+<h1>Filled Clustered/Stacked Bar Graph Generator</h1>
+</center>
+
+<!--------------------------------------------------------------------------->
+<table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>
+<tr><td>&nbsp;<font size=+2>
+<strong>The Script</strong>
+</font></td></tr></table>
+<!--------------------------------------------------------------------------->
+
+<p>I wanted a scriptable bar graph generator for my PhD thesis that
+supported stacked and clustered bars, but couldn't find one that played
+well with latex and had all the features I wanted, so I built my own.  I
+followed the scheme of <a
+href="http://www.togaware.com/datamining/gdatamine/barchart">Graham
+Williams' barchart shell script</a> to have gnuplot produce fig output and
+then mangle it to fill in the bars.  I added support for more than just two or
+three clustered datasets and support for stacked bars, as well as automatic
+averaging and other features.
+</p>
+
+<p>The script is <a href="bargraph.pl">bargraph.pl</a>.</p>
+
+<p>Features:
+<ul>
+<li>Stacked bars of 9+ datasets
+<li>Clustered bars of 8+ datasets
+<li>Lets you keep your data in table format, or separated but listed in the
+same file, rather than requiring each dataset to be in a separate file
+<li>Custom gnuplot command pass-through for fine-grained customization
+without having a separate tool chain step outside the script
+<li>Color control
+<li>Automatic arithmetic or harmonic mean calculation
+<li>Automatic legend creation
+<li>Automatic sorting, including sorting into SPEC CPU 2000 integer and
+floating point benchmark groups
+</ul>
+</p>
+
+<!--------------------------------------------------------------------------->
+<table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>
+<tr><td>&nbsp;<font size=+2>
+<strong>Usage</strong>
+</font></td></tr></table>
+<!--------------------------------------------------------------------------->
+
+<p>
+<pre>
+Usage: bargraph.pl [-gnuplot] [-fig] [-pdf] [-png] [-eps] &lt;graphfile&gt;
+
+File format:
+&lt;graph parameters&gt;
+&lt;data&gt;
+
+Graph parameter types:
+&lt;value_param&gt;=&lt;value&gt;
+=&lt;bool_param&gt;
+</pre>
+</p>
+
+<p>I keep my data in .perf files and have my Makefile generate .eps for
+latex and .png for slides or web pages.
+</p>
+
+<!--------------------------------------------------------------------------->
+<table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>
+<tr><td>&nbsp;<font size=+2>
+<strong><a name="Examples">Examples</a></strong>
+</font></td></tr></table>
+<!--------------------------------------------------------------------------->
+
+<p>&nbsp;</p>
+
+<p>Simple bar graph</p>
+<img src="talk-mem-vscode.png">
+
+<p>Clustered bar graph</p>
+<img src="wset-bb.png">
+
+<p>Clustered bar graph 2</p>
+<img src="wset-50-talk.png">
+
+<p>Stacked 100% bar graph</p>
+<img src="heapacct.png">
+
+<p>Stacked non-100% bar graph</p>
+<img src="simp_alg_stacked.png">
+
+<p>Display explicit values</p>
+<img src="perfctr.png">
+
+<p>If missing data in a dataset</p>
+<pre>
+WARNING: missing value for am-mp in dataset 0
+WARNING: missing value for ammp in dataset 1
+</pre>
+<img src="regsteal.png">
+
+<p>&nbsp;</p>
+
+<!--------------------------------------------------------------------------->
+<table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>
+<tr><td>&nbsp;<font size=+2>
+<strong>Contact</a></strong>
+</font></td></tr></table>
+<!--------------------------------------------------------------------------->
+
+<p>
+Comments to <script language="JavaScript">
+mailnospam("iye", "alum.mit.edu", "Derek Bruening")</script>
+</p>
+
+<!--------------------------------------------------------------------------->
+<!--------------------------------------------------------------------------->
+</body>
+</html>

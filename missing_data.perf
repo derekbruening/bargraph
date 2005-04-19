@@ -1,0 +1,61 @@
+# example of missing data, adapted from Derek Bruening's PhD defense
+# ammp is misspelled in the second dataset, causing bargraph.pl to warn:
+#   WARNING: missing value for am-mp in dataset 0
+#   WARNING: missing value for ammp in dataset 1
+
+=multi Unoptimized Optimized
+column=last
+=harmean
+=sortbmarks
+=percent
+yformat=%g%%
+xlabel=Benchmark
+ylabel=Time impact of stealing a register
+legendx=5800
+legendy=1720
+
+        ammp    38.97    35.78     => 1.089
+       applu   168.22   157.58     => 1.068
+        apsi   109.90   103.20     => 1.065
+         art    26.00    22.68     => 1.146
+       bzip2    22.15    19.40     => 1.142
+      crafty    18.22    16.78     => 1.086
+         eon    71.17    70.32     => 1.012
+      equake    24.97    22.57     => 1.106
+         gap    19.75    19.27     => 1.025
+         gcc    12.92    12.43     => 1.039
+        gzip    16.02    13.30     => 1.205
+         mcf    13.07    13.17     => 0.992
+        mesa    21.28    19.67     => 1.082
+       mgrid   159.80   153.45     => 1.041
+      parser    26.80    26.82     => 0.999
+     perlbmk    26.10    25.42     => 1.027
+    sixtrack    62.63    48.75     => 1.285
+        swim   127.65   106.32     => 1.201
+       twolf    21.58    21.60     => 0.999
+      vortex    20.93    20.80     => 1.006
+         vpr    15.35    15.35     => 1.000
+     wupwise    54.75    54.00     => 1.014
+=multi
+       am-mp    23.40    22.45     => 1.042
+       applu   167.50   156.75     => 1.069
+        apsi   110.70   103.37     => 1.071
+         art    11.45     8.93     => 1.282
+       bzip2    13.87    12.52     => 1.108
+      crafty    13.90    12.93     => 1.075
+         eon    18.05    17.75     => 1.017
+      equake    16.58    14.62     => 1.134
+         gap    16.97    15.80     => 1.074
+         gcc    10.25     9.68     => 1.059
+        gzip    14.60    11.42     => 1.278
+         mcf     9.15     9.08     => 1.008
+        mesa    15.63    14.57     => 1.073
+       mgrid   159.85   154.13     => 1.037
+      parser    15.73    15.20     => 1.035
+     perlbmk    19.28    19.33     => 0.997
+    sixtrack    62.50    48.73     => 1.283
+        swim   128.75   106.50     => 1.209
+       twolf    17.67    16.68     => 1.059
+      vortex    19.35    18.15     => 1.066
+         vpr    10.45     9.82     => 1.064
+     wupwise    51.22    50.80     => 1.008

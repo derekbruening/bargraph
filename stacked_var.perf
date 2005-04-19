@@ -1,0 +1,36 @@
+# stacked variable-height bar graph, courtesy of Barb Cutler
+=stacked;not in block;already modified;swap;edge collapse;vertex smoothing;no action available
+# avoiding gray and black for better looking on-screen graph
+# (not planning on printing this one)
+colors=med_blue,black,yellow,red,cyan,dark_green
+legendx=5000
+legendy=500
+=table
+=norotate
+=nogridy
+=noupperright
+yformat=%g
+=noxlabels
+xlabel=Iteration
+# move label closer to x axis, since no x tics
+xlabelshift=0,1
+ylabel=Tetrahedral Count
+extraops=set size 1,1.4
+max=460799
+
+  1   414268   20694    5581   19729     347     180
+  2   350048   15279    5800   18553     306     171
+  3   258148   30938    7441   25511    1045     584
+  4   159636   29524    6370   23945    6052    4882
+  5    78482   22588    2948   10975    6634   10974
+  6    39698   12116    1922    6942    4875   14152
+  7    18123    5381    1291    2672    2783   15071
+  8     9357    4511    1260    1790    2245   12095
+  9     4381    2189     982     923    1564   11993
+ 10     1753    2013     799     747    1273   11031
+ 11        0    1208     571     410     780   11239
+ 12        0     674     377     231     541   10697
+ 13        0     406     238     156     335   10415
+ 14        0     357     192     120     268   10005
+ 15        0     226     160      76     200    9756
+ 16        0      80      70      25      92    7494

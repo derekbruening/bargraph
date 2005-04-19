@@ -15,9 +15,9 @@ function mailnospam(user, site, display) {
 <body bgcolor="ffffff" text="000000" link="000088" vlink="006600">
 
 <table width="100%" cellspacing=0 cellpadding=5 border=0>
-<tr><td align="right"><image src="wset-bb_sm.png"></td>
+<tr><td align="right"><image src="cluster_sm.png"></td>
     <td width=100>&nbsp;</td>
-    <td align="left"><image src="heapacct_sm.png"></td>
+    <td align="left"><image src="stacked_100_sm.png"></td>
 </tr></table>
 
 <center>
@@ -32,7 +32,7 @@ function mailnospam(user, site, display) {
 <!--------------------------------------------------------------------------->
 
 <p>
-<image align="right" src="simp_alg_stacked_sm.png">
+<image align="right" src="stacked_var_sm.png">
 I wanted a scriptable bar graph generator for my <a href="/derek/phd.html">PhD
 thesis</a> that supported stacked and clustered bars, but couldn't find one
 that played well with latex and had all the features I wanted, so I built
@@ -44,7 +44,8 @@ or three clustered datasets and support for stacked bars, as well as
 automatic averaging and other features.
 </p>
 
-<p>The script is <a href="bargraph.pl">bargraph.pl</a>.</p>
+<p>The script is <a href="bargraph.pl">bargraph.pl</a>, released under
+the <a href="gpl.txt">GPL</a>.</p>
 
 <p>Features:
 <ul>
@@ -86,8 +87,8 @@ Graph parameter types:
 
 The script takes in a single file that specifies the data to graph and
 control parameters for customizing the graph.  The parameters must precede
-the data in the file.
-</p>
+the data in the file. Comments can be included in a graph file following the
+<tt>#</tt> character.</p>
 
 <p>
 The script's output, by default, is encapsulated postscript (.eps).  It
@@ -102,13 +103,12 @@ produce a final figure.
 latex and .png for slides or web pages.  See <a href="#Bitmap">converting
 to non-vector formats</a> for notes on avoiding aliasing and other problems
 when creating images, and for some Makefile rules.  My script magnifies 2x
-when converting to png to avoid these problems, but for most uses that's
-not enough and you should follow <a href="#Bitmap">my suggestions</a>
-rather than using -png.
+when converting to png to help avoid these problems, but for most uses
+that's not enough and you should follow <a href="#Bitmap">my
+suggestions</a> rather than using -png.
 </p>
 
-<p>The following sections describe each graph parameter.  Comments can be
-included in a graph file by using the <tt>#</tt> character.</p>
+<p>The following sections describe each graph parameter.</p>
 
 <!--------------------------------------------------------------------------->
 <table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>
@@ -151,8 +151,14 @@ included in a graph file by using the <tt>#</tt> character.</p>
      Indicates that the data will be listed in columns.  This is much more
      compact and readable than listing each column separately, though that
      can be done using the <a href="#multi">=multi</a> separation marker.
-     An example:
+     The table must look like this:
+     <pre>
+     &lt;benchmark1&gt; &lt;dataset1&gt; &lt;dataset2&gt; &lt;dataset3&gt; ...
+     &lt;benchmark2&gt; &lt;dataset1&gt; &lt;dataset2&gt; &lt;dataset3&gt; ...
+     ...  
+     </pre>
 
+     An example:
      <pre>
      age     37  9 22 
      height  17 12 20 
@@ -196,8 +202,9 @@ included in a graph file by using the <tt>#</tt> character.</p>
 
 <li><p><strong>colors=</strong><br>
     The script was tuned with sets of colors designed to have maximum
-    contrast when printed.  Custom colors can be chosen using this
-    parameter.  Available color names are:
+    contrast when printed on a non-color printer, yet still look good on a
+    color display.  Non-default color orderings can be chosen using this
+    parameter. The available color names are:
 
     </p><p>
     <table cellspacing=0 cellpadding=5 border=0>
@@ -410,34 +417,50 @@ included in a graph file by using the <tt>#</tt> character.</p>
 </font></td></tr></table>
 <!--------------------------------------------------------------------------->
 
-<p>A simple bar graph with a harmonic mean average.
-<a href="talk-mem-vscode.perf">control file</a></p>
-<img src="talk-mem-vscode.png">
+<ul>
 
-<p>Clustered bar graph</p>
-<img src="wset-bb.png">
+<li>
+<p>A simple bar graph with a harmonic mean average.<br>
+<a href="simple.perf">[source file]</a></p>
+<img src="simple.png">
+</li>
 
-<p>Clustered bar graph 2</p>
-<img src="wset-50-talk.png">
+<li>
+<p>A clustered bar graph with an in-graph legend.<br>
+<a href="cluster.perf">[source file]</a></p>
+<img src="cluster.png">
+</li>
 
-<p>Stacked 100% bar graph</p>
-<img src="heapacct.png">
+<li>
+<p>A stacked all-100% bar graph<br>
+<a href="stacked_100.perf">[source file]</a></p>
+<img src="stacked_100.png">
+</li>
 
-<p>Stacked non-100% bar graph</p>
-<pre>
-extraops=set size 1,1.4
-</pre>
-<img src="simp_alg_stacked.png">
+<li>
+<p>A stacked variable-height bar graph.<br>
+<a href="stacked_var.perf">[source file]</a></p>
+<img src="stacked_var.png">
+</li>
 
-<p>Display explicit values</p>
-<img src="perfctr.png">
+<li>
+<p>An example of displaying explicit values.<br>
+<a href="value_label.perf">[source file]</a></p>
+<img src="value_label.png">
+</li>
 
-<p>If missing data in a dataset</p>
+<li>
+<p>An example of missing data in a dataset.  <tt>ammp</tt> is misspelled as
+<tt>am-mp</tt>, resulting in these warnings:
 <pre>
 WARNING: missing value for am-mp in dataset 0
 WARNING: missing value for ammp in dataset 1
 </pre>
-<img src="regsteal.png">
+<a href="missing_data.perf">[source file]</a></p>
+<img src="missing_data.png">
+</li>
+
+</ul>
 
 <p>&nbsp;</p>
 
@@ -449,7 +472,7 @@ WARNING: missing value for ammp in dataset 1
 <!--------------------------------------------------------------------------->
 
 <p>
-<img align="right" width=400 src="wset-50-talk_bad.png">
+<img align="right" width=400 src="bad_quality.png">
 Because <tt>fig2dev</tt> does not perform anti-aliasing, converting
 directly to an image format can result in very poor quality lines and
 text.  This problem is compounded if that image is subsequently resized

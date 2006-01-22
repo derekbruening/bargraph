@@ -56,9 +56,11 @@ Graph parameter types:
 
 # This is version 2.0, released January 21, 2006.
 # Changes in version 2.0:
-#    * support > 8 clustered bars
-#    * fix > 9 dataset color bug
-#    * support > 25 stacked bars
+#    * added pattern fill support
+#    * fixed errors in large numbers of datasets:
+#      - support > 8 clustered bars
+#      - fix > 9 dataset color bug
+#      - support > 25 stacked bars
 
 ###########################################################################
 ###########################################################################
@@ -139,6 +141,11 @@ $extra_gnuplot_cmds = "";
 $legendx = 0;
 $legendy = 0;
 
+# use patterns instead of solid fills?
+$patterns = 0;
+# there are only 22 patterns that fig supports
+$max_patterns = 22;
+
 $custom_colors = 0;
 
 # fig depth: leave enough room for many datasets
@@ -166,7 +173,7 @@ while (<IN>) {
             $stacked = 1;
             # reverse order of datasets
             $dataset = $#legend;
-	} elsif (/^=multi/) {
+        } elsif (/^=multi/) {
             die "Neither cluster nor stacked specified for multiple dataset"
                 if (!$multiset);
             if ($stacked) {
@@ -175,7 +182,9 @@ while (<IN>) {
             } else {
                 $dataset++;
             }
-	} elsif (/^colors=(.*)/) {
+        } elsif (/^=patterns/) {
+            $patterns = 1;
+        } elsif (/^colors=(.*)/) {
             $custom_colors = 1;
             @custom_color = split(',', $1);
         } elsif (/^=table/) {
@@ -200,7 +209,7 @@ while (<IN>) {
             $use_mean = 1;
         } elsif (/^meanlabel=(.*)$/) {
             $mean_label = $1;
-	} elsif (/^min=([\d\.]+)/) {
+        } elsif (/^min=([\d\.]+)/) {
             $ymin = $1;
             $calc_min = 0;
         } elsif (/^max=([\d\.]+)/) {
@@ -220,7 +229,7 @@ while (<IN>) {
         } elsif (/^ylabel=(.*)$/) {
             $ylabel = $1;
         } elsif (/^yformat=(.*)$/) {
-	    $yformat = $1;
+            $yformat = $1;
         } elsif (/^=noupperright/) {
             $noupperright = 1;
         } elsif (/^=gridx/) {
@@ -236,42 +245,42 @@ while (<IN>) {
         } else {
             die "Unknown command $_\n";
         }
-	next;
+        next;
     }
 
     # this line must have data on it!
     
     if ($table) {
-	# table has to look like this:
-	# <bmark1> <dataset1> <dataset2> <dataset3> ...
-	# <bmark2> <dataset1> <dataset2> <dataset3> ...
-	# ...
-	@table_entry = split(' ', $_);
-	if ($#table_entry != $multiset) { # not +1 since bmark
-	    die "Table format error on line $_: $#table_entry vs $multiset\n";
-	}
+        # table has to look like this:
+        # <bmark1> <dataset1> <dataset2> <dataset3> ...
+        # <bmark2> <dataset1> <dataset2> <dataset3> ...
+        # ...
+        @table_entry = split(' ', $_);
+        if ($#table_entry != $multiset) { # not +1 since bmark
+            die "Table format error on line $_: $#table_entry vs $multiset\n";
+        }
         $bmark = $table_entry[0];
-	for ($i=1; $i<=$#table_entry; $i++) {
+        for ($i=1; $i<=$#table_entry; $i++) {
             if ($stacked) {
                 # reverse order of datasets
                 $dataset = $multiset-1 - ($i-1);
             } else {
                 $dataset = $i-1;
             }
-	    $val = get_val($table_entry[$i], $dataset);
-	    if ($stacked && $dataset < $multiset-1) {
-		# need to add prev bar to stick above
-		$entry{$bmark,$dataset+1} =~ /\s+([\d\.]+)/;
-		$val += $1;
-	    }
-	    $entry{$bmark,$dataset} = "$bmark  $val\n";
-	}
-	goto nextiter;
+            $val = get_val($table_entry[$i], $dataset);
+            if ($stacked && $dataset < $multiset-1) {
+                # need to add prev bar to stick above
+                $entry{$bmark,$dataset+1} =~ /\s+([\d\.]+)/;
+                $val += $1;
+            }
+            $entry{$bmark,$dataset} = "$bmark  $val\n";
+        }
+        goto nextiter;
     }
 
     # support the column= feature
     if (defined($column)) {
-	my @columns = split(' ', $_);
+        my @columns = split(' ', $_);
         $bmark = $columns[0];
         if ($column eq "last") {
             $val_string = $columns[$#columns];
@@ -469,7 +478,14 @@ for ($i=0; $i<=$#figcolor; $i++) {
 }
 chomp($figcolorins);
 
-if ($use_colors) {
+if ($patterns) {
+    for ($i=0; $i<$plotcount; $i++) {
+        # cycle around at max
+        $fillstyle[$i] = 41 + ($i % $max_patterns);
+        # FIXME: could combine patterns and colors, we don't bother to support that
+        $fillcolor[$i] = 7;
+    }
+} elsif ($use_colors) {
     # colors: all solid fill
     for ($i=0; $i<$plotcount; $i++) {
         $fillstyle[$i]=20;
@@ -639,9 +655,16 @@ if ($extra_gnuplot_cmds ne "") {
 
 # plot data from stdin, separate style for each so can distinguish
 # in resulting fig
-printf GNUPLOT "plot %s '-' notitle with boxes 3", $lineat;
-for ($i=1; $i<$plotcount; $i++) {
-    printf GNUPLOT ", '-' notitle with boxes %d", $i+3;
+printf GNUPLOT "plot %s ", $lineat;
+for ($i=0; $i<$plotcount; $i++) {
+    if ($i != 0) {
+        printf GNUPLOT ", ";
+    }
+    if ($patterns) {
+        printf GNUPLOT "'-' notitle with boxes fs pattern %d", ($i % $max_patterns);
+    } else {
+        printf GNUPLOT "'-' notitle with boxes %d", $i+3;
+    }
 }
 print GNUPLOT "\n";
 
@@ -766,7 +789,7 @@ if ($plotcount > 1) {
         $dy=$i*157;
         printf FIG2DEV
 "2 1 0 1 -1 $fillcolor[$i] $legend_depth 0 $fillstyle[$i] 0.000 0 0 0 0 0 5
-	 %d %d %d %d %d %d %d %d %d %d  
+\t %d %d %d %d %d %d %d %d %d %d  
 ",  $lx, $ly+200+$dy, $lx, $ly+84+$dy, $lx+121, $ly+84+$dy,
     $lx+121, $ly+200+$dy, $lx, $ly+200+$dy;
     }

@@ -55,7 +55,7 @@ the <a href="gpl.txt">GPL</a>.</p>
 same file, rather than requiring each dataset to be in a separate file
 <li>Custom gnuplot command pass-through for fine-grained customization
 without having a separate tool chain step outside the script
-<li>Color control
+<li>Bars can be pattern filled or use solid colors
 <li>Automatic arithmetic or harmonic mean calculation
 <li>Automatic legend creation
 <li>Automatic sorting, including sorting into SPEC CPU 2000 integer and
@@ -64,7 +64,8 @@ floating point benchmark groups
 </p>
 
 <p>The script was updated to version 2.0 on January 21, 2006.  This version
-fixes issues with supporting large numbers of datasets.</p>
+added pattern fill support and fixed issues with supporting large numbers
+of datasets.</p>
 
 <!--------------------------------------------------------------------------->
 <table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>
@@ -258,6 +259,13 @@ suggestions</a> rather than using -png.
     </pre>
 
 </p></li>
+
+<li><p><strong>=patterns</strong><br>
+     Specifies that pattern fills rather than solid colors should be used
+     to fill the bars.  There are 22 fig patterns, which are re-used for
+     dataset counts higher than 22.
+</p></li>
+
 </ul>
 
 <!--------------------------------------------------------------------------->
@@ -432,6 +440,12 @@ suggestions</a> rather than using -png.
 <p>A clustered bar graph with an in-graph legend.<br>
 <a href="cluster.perf">[source file]</a></p>
 <img src="cluster.png">
+</li>
+
+<li>
+<p>The same graph but using patterns rather than solid colors.<br>
+<a href="cluster-pattern.perf">[source file]</a></p>
+<img src="cluster-pattern.png">
 </li>
 
 <li>

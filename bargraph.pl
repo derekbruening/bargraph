@@ -3,7 +3,7 @@
 # bargraph.pl: a bar graph builder that supports stacking and clustering.
 # Modifies gnuplot's output to fill in bars and add a legend.
 #
-# Copyright (C) 2004-2005 Derek Bruening <iye@alum.mit.edu>
+# Copyright (C) 2004-2006 Derek Bruening <iye@alum.mit.edu>
 # http://www.burningcutlery.com/derek/bargraph/
 #
 # This program is free software; you can redistribute it and/or modify
@@ -53,6 +53,12 @@ Graph parameter types:
 #   but issues warning.
 # For complete documentation see
 #   http://www.burningcutlery.com/derek/bargraph/
+
+# This is version 2.0, released January 21, 2006.
+# Changes in version 2.0:
+#    * support > 8 clustered bars
+#    * fix > 9 dataset color bug
+#    * support > 25 stacked bars
 
 ###########################################################################
 ###########################################################################
@@ -134,6 +140,12 @@ $legendx = 0;
 $legendy = 0;
 
 $custom_colors = 0;
+
+# fig depth: leave enough room for many datasets
+# (for stacked bars we subtract 2 for each)
+# but max gnuplot terminal depth for fig is 99!
+$legend_depth = 100;
+$plot_depth = 98;
 
 while (<IN>) {
     next if (/^\#/ || /^\s*$/);
@@ -414,9 +426,10 @@ if (!$stacked) {
         $boxwidth=0.12;
     } elsif ($plotcount == 7) {
         $boxwidth=0.11;
-    } elsif ($plotcount >= 8) {
-        # FIXME: handle more!
+    } elsif ($plotcount == 8) {
         $boxwidth=0.08;
+    } elsif ($plotcount >= 9) {
+        $boxwidth=0.75/$plotcount;
     }
 }
 
@@ -426,19 +439,21 @@ if (!$stacked) {
 $use_colors=1;
 
 # custom colors are from 32 onward, we insert them into the fig file
+# the order here is the order for 9+ datasets
 $basefigcolor=32;
 $numfigclrs=0;
 $figcolor[$numfigclrs]="#000000"; $fig_black=$colornm{'black'}=$basefigcolor + $numfigclrs++;
-$figcolor[$numfigclrs]="#dddddd"; $fig_grey=$colornm{'grey'}=$basefigcolor + $numfigclrs++;
-$figcolor[$numfigclrs]="#ffff00"; $fig_yellow=$colornm{'yellow'}=$basefigcolor + $numfigclrs++;
-$figcolor[$numfigclrs]="#0000ff"; $fig_dark_blue=$colornm{'dark_blue'}=$basefigcolor + $numfigclrs++;
-$figcolor[$numfigclrs]="#6666ff"; $fig_med_blue=$colornm{'med_blue'}=$basefigcolor + $numfigclrs++;
 $figcolor[$numfigclrs]="#aaaaff"; $fig_light_blue=$colornm{'light_blue'}=$basefigcolor + $numfigclrs++;
-$figcolor[$numfigclrs]="#00ffff"; $fig_cyan=$colornm{'cyan'}=$basefigcolor + $numfigclrs++;
-$figcolor[$numfigclrs]="#77ff00"; $fig_light_green=$colornm{'light_green'}=$basefigcolor + $numfigclrs++;
 $figcolor[$numfigclrs]="#00aa00"; $fig_dark_green=$colornm{'dark_green'}=$basefigcolor + $numfigclrs++;
-$figcolor[$numfigclrs]="#dd00ff"; $fig_magenta=$colornm{'magenta'}=$basefigcolor + $numfigclrs++;
+$figcolor[$numfigclrs]="#77ff00"; $fig_light_green=$colornm{'light_green'}=$basefigcolor + $numfigclrs++;
+$figcolor[$numfigclrs]="#ffff00"; $fig_yellow=$colornm{'yellow'}=$basefigcolor + $numfigclrs++;
 $figcolor[$numfigclrs]="#ff0000"; $fig_red=$colornm{'red'}=$basefigcolor + $numfigclrs++;
+$figcolor[$numfigclrs]="#dd00ff"; $fig_magenta=$colornm{'magenta'}=$basefigcolor + $numfigclrs++;
+$figcolor[$numfigclrs]="#0000ff"; $fig_dark_blue=$colornm{'dark_blue'}=$basefigcolor + $numfigclrs++;
+$figcolor[$numfigclrs]="#00ffff"; $fig_cyan=$colornm{'cyan'}=$basefigcolor + $numfigclrs++;
+$figcolor[$numfigclrs]="#dddddd"; $fig_grey=$colornm{'grey'}=$basefigcolor + $numfigclrs++;
+$figcolor[$numfigclrs]="#6666ff"; $fig_med_blue=$colornm{'med_blue'}=$basefigcolor + $numfigclrs++;
+$num_nongrayscale = $numfigclrs;
 # for grayscale
 $figcolor[$numfigclrs]="#222222"; $fig_grey=$colornm{'grey1'}=$basefigcolor + $numfigclrs++;
 $figcolor[$numfigclrs]="#444444"; $fig_grey=$colornm{'grey2'}=$basefigcolor + $numfigclrs++;
@@ -510,7 +525,7 @@ if ($use_colors) {
             $fillcolor[5]=$fig_dark_blue;
             $fillcolor[6]=$fig_cyan;
             $fillcolor[7]=$fig_grey;
-        } else {
+        } elsif ($plotcount == 9) {
             $fillcolor[0]=$fig_black;
             $fillcolor[1]=$fig_dark_green;
             $fillcolor[2]=$fig_light_green;
@@ -520,6 +535,12 @@ if ($use_colors) {
             $fillcolor[6]=$fig_dark_blue;
             $fillcolor[7]=$fig_cyan;
             $fillcolor[8]=$fig_grey;
+        } else {
+            for ($i=0; $i<$plotcount; $i++) {
+                # FIXME: set to programmatic spread of custom colors
+                # for now we simply re-use our set of colors
+                $fillcolor[$i]=$basefigcolor + ($i % $num_nongrayscale);
+            }
         }
     }
     if ($stacked) {
@@ -555,9 +576,13 @@ if ($use_colors) {
     }
 }
 
+# "set terminal" set the default depth to $plot_depth
+# we want bars in front of rest of plot
+# though we will violate that rule to fit extra datasets (> 48)
+$start_depth = ($plot_depth - 2 - 2*($plotcount-1)) < 0 ?
+    2*$plotcount : $plot_depth;
 for ($i=0; $i<$plotcount; $i++) {
-    # "set terminal" set the default depth to 40: we want bars in front of rest of plot
-    $depth[$i] = 38 - 2*$i;
+    $depth[$i] = $start_depth - 2 - 2*$i;
 }
 
 ###########################################################################
@@ -583,8 +608,8 @@ if ($debug_seegnuplot) {
 printf GNUPLOT "
 set title '%s'
 # can also pass \"fontsize 12\" to fig terminal
-set terminal fig color depth 40
-", $title;
+set terminal fig color depth %d
+", $title, $plot_depth;
 
 printf GNUPLOT "
 set xlabel '%s' %s
@@ -709,11 +734,11 @@ $figcolorins|;
 
     # First 5 are solid lines of colors 2 through 6
     # We subtract 2 from color to get index
-    s|^2 1 0 1 ([1-9]) \1 40 0 -1     0.000 0 0 0 0 0 5|2 1 0 1 -1  $fillcolor[$1-2]  $depth[$1-2] 0 $fillstyle[$1-2]     0.000 0 0 0 0 0 5|;
+    s|^2 1 0 1 ([1-9]) \1 $plot_depth 0 -1     0.000 0 0 0 0 0 5|2 1 0 1 -1  $fillcolor[$1-2]  $depth[$1-2] 0 $fillstyle[$1-2]     0.000 0 0 0 0 0 5|;
 
     # Next are in groups of 7, each with colors 0 through 6 and
     # with gap of group# * 3.000 => index is (color + 5 + 7*(gap/3 - 1))
-    s|^2 1 1 1 ([0-9]) \1 40 0 -1     ([0-9]+).000 0 0 0 0 0 5|2 1 0 1 -1  $fillcolor[$1+5+7*($2/3-1)]  $depth[$1+5+7*($2/3-1)] 0 $fillstyle[$1+5+7*($2/3-1)]     0.000 0 0 0 0 0 5|;
+    s|^2 1 1 1 ([0-9]) \1 $plot_depth 0 -1 +([0-9]+).000 0 0 0 0 0 5|2 1 0 1 -1  $fillcolor[$1+5+7*($2/3-1)]  $depth[$1+5+7*($2/3-1)] 0 $fillstyle[$1+5+7*($2/3-1)]     0.000 0 0 0 0 0 5|;
     
     # Add commas between 3 digits for text in thousands or millions
     s|^4 (.*\d)(\d{3}\S*)\\001$|4 $1,$2\\001|; 
@@ -740,7 +765,7 @@ if ($plotcount > 1) {
     for ($i=0; $i<$plotcount; $i++) {
         $dy=$i*157;
         printf FIG2DEV
-"2 1 0 1 -1 $fillcolor[$i] 10 0 $fillstyle[$i] 0.000 0 0 0 0 0 5
+"2 1 0 1 -1 $fillcolor[$i] $legend_depth 0 $fillstyle[$i] 0.000 0 0 0 0 0 5
 	 %d %d %d %d %d %d %d %d %d %d  
 ",  $lx, $ly+200+$dy, $lx, $ly+84+$dy, $lx+121, $ly+84+$dy,
     $lx+121, $ly+200+$dy, $lx, $ly+200+$dy;
@@ -757,8 +782,8 @@ if ($plotcount > 1) {
         # use width*70, and assume full height 135 (see fig notes above)
         $leglen = length $legend[$legidx];
         printf FIG2DEV
-"4 0 0 50 0 0 9 0.0000 4 135 %d %d %d %s\\001
-", $leglen*70, $lx+225, $ly+186+157*$i, $legend[$legidx];
+"4 0 0 %d 0 0 9 0.0000 4 135 %d %d %d %s\\001
+", $legend_depth, $leglen*70, $lx+225, $ly+186+157*$i, $legend[$legidx];
     }
 }
 

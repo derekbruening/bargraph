@@ -63,10 +63,6 @@ floating point benchmark groups
 </ul>
 </p>
 
-<p>The script was updated to version 2.0 on January 21, 2006.  This version
-added pattern fill support and fixed issues with supporting large numbers
-of datasets.</p>
-
 <!--------------------------------------------------------------------------->
 <table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>
 <tr><td>&nbsp;<font size=+2>
@@ -155,7 +151,11 @@ suggestions</a> rather than using -png.
      Indicates that the data will be listed in columns.  This is much more
      compact and readable than listing each column separately, though that
      can be done using the <a href="#multi">=multi</a> separation marker.
-     The table must look like this:
+     If there is a character after =table it is taken to be the column
+     delimiter in the table; otherwise, the table is split by spaces, with
+     multiple adjacent spaces being collapsed into one.  Extra leading and
+     trailing spaces around each datum are removed.
+     The table should look something like this:
      <pre>
      &lt;benchmark1&gt; &lt;dataset1&gt; &lt;dataset2&gt; &lt;dataset3&gt; ...
      &lt;benchmark2&gt; &lt;dataset1&gt; &lt;dataset2&gt; &lt;dataset3&gt; ...
@@ -164,9 +164,18 @@ suggestions</a> rather than using -png.
 
      An example:
      <pre>
+     =table
      age     37  9 22 
      height  17 12 20 
      weight  92 52 84 
+     </pre>     
+
+     An example with a custom delimiter:
+     <pre>
+     =table,
+     age,    37,  9, 22 
+     height, 17, 12, 20 
+     weight, 92, 52, 84 
      </pre>     
 </p></li>
 
@@ -190,13 +199,14 @@ suggestions</a> rather than using -png.
 
 <li><p><strong>column=</strong><br>
     Some of my data is produced by other scripts that place other fields on
-    each line.  For example, one scripts shows me the ratio of time,
+    each line.  For example, one script shows me the ratio of time,
     working set size, and virtual memory size between two benchmark runs.
     Rather than requiring another script to strip out the proper column of
     numbers, you can simply specify which column contains the numbers to
     graph with this parameter.  The column numbers begin at 1, which is
     assumed to always be the benchmark name.  The special token
-    <tt>last</tt> can be used to indicate the final column.  Examples:
+    <tt>last</tt> can be used to indicate the final column.  The columns
+    must be delimited by spaces.  Examples:
 
     <pre>
     column=last
@@ -325,6 +335,11 @@ suggestions</a> rather than using -png.
 <li><p><strong>max=</strong><br>
     Sets the maximum y value displayed.  Any values above this are simply
     cut off at this value.
+</p></li>
+
+<li><p><strong>=nocommas</strong><br>
+    Disables the insertion of commas in large numbers, which the script
+    adds by default.
 </p></li>
 
 </ul>
@@ -559,7 +574,29 @@ when specifying legend placement and instead use keywords to show where
 outside the graph to put it, or to automatically find an empty spot inside
 the graph.</li>
 
+<li>Gnuplot 4.0 now supports filled bar graphs, which
+could simplify part of my script.  I haven't yet tried out the new
+fill support.
+
 </ul>
+
+<!--------------------------------------------------------------------------->
+<table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>
+<tr><td>&nbsp;<font size=+2>
+<strong>Version History</strong>
+</font></td></tr></table>
+<!--------------------------------------------------------------------------->
+
+<dl>
+
+<dt><strong>3.0 -- July 15, 2006</strong><dd><p>Added support for custom
+table delimiters, spaces in names, and the =nocommas option.</p></dt>
+
+<dt><strong>2.0 -- January 21, 2006</strong><dd><p>This version added
+pattern fill support and fixed issues with supporting large numbers of
+datasets.</p></dt>
+
+</dl>
 
 <!--------------------------------------------------------------------------->
 <table bgcolor="#6699cc" width=100% cellspacing=0 cellpadding=5 border=0>

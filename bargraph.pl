@@ -54,8 +54,13 @@ Graph parameter types:
 # For complete documentation see
 #   http://www.burningcutlery.com/derek/bargraph/
 
-# This is version 2.0, released January 21, 2006.
-# Changes in version 2.0:
+# This is version 3.0.
+# Changes in version 3.0, released July 15, 2006:
+#    * added support for spaces and quotes in x-axis labels
+#    * added support for missing values in table format
+#    * added support for custom table delimiter
+#    * added an option to suppress adding of commas
+# Changes in version 2.0, released January 21, 2006:
 #    * added pattern fill support
 #    * fixed errors in large numbers of datasets:
 #      - support > 8 clustered bars
@@ -154,6 +159,8 @@ $custom_colors = 0;
 $legend_depth = 100;
 $plot_depth = 98;
 
+$add_commas = 1;
+
 while (<IN>) {
     next if (/^\#/ || /^\s*$/);
     # line w/ = is a control line (except =>)
@@ -189,6 +196,11 @@ while (<IN>) {
             @custom_color = split(',', $1);
         } elsif (/^=table/) {
             $table = 1;
+            if (/^=table(.)/) {
+                $table_splitby = $1;
+            } else {
+                $table_splitby = ' ';
+            }
         } elsif (/^column=(\S+)/) {
             $column = $1;
         } elsif (/^=base1/) {
@@ -242,6 +254,8 @@ while (<IN>) {
             $legendy = $1;
         } elsif (/^extraops=(.*)/) {
             $extra_gnuplot_cmds .= "$1\n";
+        } elsif (/^=nocommas/) {
+            $add_commas = 0;
         } else {
             die "Unknown command $_\n";
         }
@@ -251,16 +265,29 @@ while (<IN>) {
     # this line must have data on it!
     
     if ($table) {
-        # table has to look like this:
+        # table has to look like this, separated by $table_splitby (default ' '):
         # <bmark1> <dataset1> <dataset2> <dataset3> ...
         # <bmark2> <dataset1> <dataset2> <dataset3> ...
         # ...
-        @table_entry = split(' ', $_);
-        if ($#table_entry != $multiset) { # not +1 since bmark
-            die "Table format error on line $_: $#table_entry vs $multiset\n";
+
+        # perl split has a special case for literal ' ' to collapse adjacent
+        # spaces
+        if ($table_splitby eq ' ') {
+            @table_entry = split(' ', $_);
+        } else {
+            @table_entry = split($table_splitby, $_);
         }
+        if ($#table_entry != $multiset) { # not +1 since bmark
+            print STDERR "WARNING: table format error on line $_: found $#table_entry entries, expecting $multiset entries\n";
+        }
+        # remove leading and trailing spaces, and escape quotes
+        $table_entry[0] =~ s/^\s*//;
+        $table_entry[0] =~ s/\s*$//;
+        $table_entry[0] =~ s/\"/\\\"/g;
         $bmark = $table_entry[0];
         for ($i=1; $i<=$#table_entry; $i++) {
+            $table_entry[$i] =~ s/^\s*//;
+            $table_entry[$i] =~ s/\s*$//;
             if ($stacked) {
                 # reverse order of datasets
                 $dataset = $multiset-1 - ($i-1);
@@ -270,16 +297,19 @@ while (<IN>) {
             $val = get_val($table_entry[$i], $dataset);
             if ($stacked && $dataset < $multiset-1) {
                 # need to add prev bar to stick above
-                $entry{$bmark,$dataset+1} =~ /\s+([\d\.]+)/;
+                $entry{$bmark,$dataset+1} =~ /([\d\.]+)/;
                 $val += $1;
             }
-            $entry{$bmark,$dataset} = "$bmark  $val\n";
+            if ($val ne '') {
+                $entry{$bmark,$dataset} = "$val\n";
+            } # else, leave undefined
         }
         goto nextiter;
     }
 
     # support the column= feature
     if (defined($column)) {
+        # only support separation by spaces
         my @columns = split(' ', $_);
         $bmark = $columns[0];
         if ($column eq "last") {
@@ -288,9 +318,12 @@ while (<IN>) {
             die "Column $column out of bounds" if ($column > 1 + $#columns);
             $val_string = $columns[$column - 1];
         }
-    } elsif (/^\s*(\S+)\s+([\d\.]+)/) {
+    } elsif (/^\s*(.+)\s+([\d\.]+)\s*$/) {
         $bmark = $1;
         $val_string = $2;
+        # remove leading spaces, and escape quotes
+        $bmark =~ s/\s+$//;
+        $bmark =~ s/\"/\\\"/g;
     } else {
         if (/\S+/) {
             print STDERR "WARNING: unexpected, unknown-format line $_";
@@ -308,10 +341,10 @@ while (<IN>) {
     if ($stacked && $dataset < $multiset-1) {
         # need to add prev bar to stick above
         # remember that we're walking backward
-        $entry{$bmark,$dataset+1} =~ /\s+([\d\.]+)/;
+        $entry{$bmark,$dataset+1} =~ /([\d\.]+)/;
         $val += $1;
     }
-    $entry{$bmark,$dataset} = "$bmark  $val\n";
+    $entry{$bmark,$dataset} = "$val\n";
 
   nextiter:
     if (!defined($names{$bmark})) {
@@ -674,7 +707,7 @@ for ($i=0; $i<$plotcount; $i++) {
         # support missing values in some datasets
         if (defined($entry{$b,$i})) {
             $xval = get_xval($i, $line);
-            print GNUPLOT "$xval,$entry{$b,$i}";
+            print GNUPLOT "$xval, $entry{$b,$i}";
             $line++;
         } else {
             print STDERR "WARNING: missing value for $b in dataset $i\n";
@@ -685,11 +718,7 @@ for ($i=0; $i<$plotcount; $i++) {
     $line = $xmax - 1;
     if ($use_mean) {
         $xval = get_xval($i, $line);
-        if ($arithmean) {
-            print GNUPLOT "$xval,mean  $harmean[$i]\n";
-        } else {
-            print GNUPLOT "$xval,har_mean  $harmean[$i]\n";
-        }
+        print GNUPLOT "$xval, $harmean[$i]\n";
     }
     # an e separates each dataset
     print GNUPLOT "e\n";
@@ -762,10 +791,12 @@ $figcolorins|;
     # Next are in groups of 7, each with colors 0 through 6 and
     # with gap of group# * 3.000 => index is (color + 5 + 7*(gap/3 - 1))
     s|^2 1 1 1 ([0-9]) \1 $plot_depth 0 -1 +([0-9]+).000 0 0 0 0 0 5|2 1 0 1 -1  $fillcolor[$1+5+7*($2/3-1)]  $depth[$1+5+7*($2/3-1)] 0 $fillstyle[$1+5+7*($2/3-1)]     0.000 0 0 0 0 0 5|;
-    
-    # Add commas between 3 digits for text in thousands or millions
-    s|^4 (.*\d)(\d{3}\S*)\\001$|4 $1,$2\\001|; 
-    s|^4 (.*\d)(\d{3}),(\d{3}\S*)\\001$|4 $1,$2,$3\\001|; 
+
+    if ($add_commas) {
+        # Add commas between 3 digits for text in thousands or millions
+        s|^4 (.*\d)(\d{3}\S*)\\001$|4 $1,$2\\001|; 
+        s|^4 (.*\d)(\d{3}),(\d{3}\S*)\\001$|4 $1,$2,$3\\001|; 
+    }
 
     print FIG2DEV $_;
 }

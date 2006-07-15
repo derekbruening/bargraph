@@ -3,7 +3,7 @@
 #   WARNING: missing value for am-mp in dataset 0
 #   WARNING: missing value for ammp in dataset 1
 
-=multi Unoptimized Optimized
+=cluster Unoptimized Optimized
 column=last
 =harmean
 =sortbmarks

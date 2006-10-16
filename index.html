@@ -51,11 +51,13 @@ the <a href="gpl.txt">GPL</a>.</p>
 <ul>
 <li>Stacked bars of 9+ datasets
 <li>Clustered bars of 8+ datasets
+<li>Clusters of stacked bars
 <li>Lets you keep your data in table format, or separated but listed in the
 same file, rather than requiring each dataset to be in a separate file
 <li>Custom gnuplot command pass-through for fine-grained customization
 without having a separate tool chain step outside the script
 <li>Bars can be pattern filled or use solid colors
+<li>Font face control and limited font size control
 <li>Automatic arithmetic or harmonic mean calculation
 <li>Automatic legend creation
 <li>Automatic sorting, including sorting into SPEC CPU 2000 integer and
@@ -134,7 +136,7 @@ suggestions</a> rather than using -png.
      each dataset must be separated by <a href="#multi">=multi</a>.
 </p></li>
 
-<li><p><strong>=stacked</strong><br>
+<li><p><a name="stacked"><strong>=stacked</strong></a><br>
      Just like <a href="#cluster">=cluster</a>, this indicates that there
      are multiple datasets, but to be displayed as stacked bars rather than
      clustered bars.  The data must be either in <a href="#table">table
@@ -212,6 +214,58 @@ suggestions</a> rather than using -png.
     column=last
     column=4
     </pre>
+</p></li>
+
+<li><p><a name="stackcluster"><strong>=stackcluster</strong></a><br>
+
+     Just like <a href="#cluster">=cluster</a>, this indicates that there
+     are multiple datasets, but here we have an extra dimension and the
+     data is displayed as clusters of stacked bars.  Each cluster is itself
+     like a <a href="#stacked">=stacked</a> dataset, and must be either in
+     <a href="#table">table format</a> or delimited by <a
+     href="#multi">=multi</a>.  The names of the stacked datasets are
+     delimited as with <a href="#cluster">=cluster</a>:
+
+     <pre>
+     =stackcluster;Basic Blocks;Traces;Hashtables;Stubs
+     </pre>
+
+     The clusters are then separated (and optionally named) by <a
+     href="#multimulti">=multimulti</a>.  If any name is given in any <a
+     href="#multimulti">=multimulti</a> parameter, then cluster labels are
+     used.  If there is no <a href="#xlabel">xlabel=</a>, then the cluster
+     labels are placed below the x axis tic mark labels.  If there are no x
+     tic marks (<a href="#noxlabels">=noxlabels</a>) then the cluster
+     labels are centered under each cluster in place of tic mark labels.
+
+     </p><p>
+     My script does not support automatically calculating the mean (<a
+     href="#arithmean">=arithmean</a> or <a href="#harmean">=harmean</a>)
+     for cluster of stacked bars.
+     </p>
+
+</p></li>
+
+<li><p><a name="multimulti"><strong>=multimulti</strong></a><br>
+     Separates the <a href="#table">table</a> or <a
+     href="#multi">=multi</a> delimited data of a <a
+     href="#stackcluster">=stackclustertable</a> graph, and optionally
+     names each cluster with the string after the <tt>=multimulti</tt>
+     token and separating whitespace.  An example:
+
+     <pre>
+     =stackcluster;Basic Blocks;Traces;Hashtables;Stubs
+     =table
+     =multimulti Private Caches
+     ammp             25.635 23.094 14.780 5.543 
+     applu            25.035 27.375 14.974 4.913 
+     =multimulti Shared Caches
+     ammp             27.863 18.913 15.536 5.404
+     applu            24.501 18.657 11.689 4.720
+     =multimulti Persistent Caches
+     ammp             17.863 11.913 19.536 9.404
+     applu            34.501 12.657 18.689 7.720
+     </pre>     
 </p></li>
 
 <li><p><strong>colors=</strong><br>
@@ -314,12 +368,16 @@ suggestions</a> rather than using -png.
     The arithmetic mean is calculated and displayed under the label "mean"
     unless specified otherwise by the <a href="#meanlabel">meanlabel</a>
     parameter.  The mean is always placed at the end of the benchmarks.
+    The mean is not supported for <a href="#stackcluster">stackcluster=</a>
+    graphs.
 </p></li>
 
 <li><p><a name="harmean"><strong>=harmean</strong></a><br>
     The harmonic mean is calculated and displayed under the label "har_mean"
     unless specified otherwise by the <a href="#meanlabel">meanlabel</a>
     parameter.  The mean is always placed at the end of the benchmarks.
+    The mean is not supported for <a href="#stackcluster">stackcluster=</a>
+    graphs.
 </p></li>
 
 <li><p><a name="meanlabel"><strong>meanlabel=</strong></a><br>
@@ -357,7 +415,7 @@ suggestions</a> rather than using -png.
     Sets the title of the graph.
 </p></li>
 
-<li><p><strong>xlabel=</strong><br>
+<li><p><a name="xlabel"><strong>xlabel=</strong></a><br>
     Sets the label for the x axis.
 </p></li>
 
@@ -388,7 +446,7 @@ suggestions</a> rather than using -png.
     </pre>
 </p></li>
 
-<li><p><strong>=noxlabels</strong><br>
+<li><p><a name="noxlabels"><strong>=noxlabels</strong></a><br>
     This specifies that x tic mark labels should not be displayed.
 </p></li>
 
@@ -415,6 +473,81 @@ suggestions</a> rather than using -png.
     Sets the y location of the legend.  By default the legend is placed at
     the top of the graph centered horizontally.  To move it to another
     location may take trial and error to get the coordinates right.
+</p></li>
+
+<li><p><a name="font"><strong>font=</strong></a><br>
+     Specifies a global font substitution.  The script supports the full
+     set of Postscript fonts that the FIG format supports, which are:
+
+     <ul>
+     <li>Times</li>
+     <li>Times Italic</li>      
+     <li>Times Bold</li>      
+     <li>Times Bold Italic</li>      
+     <li>AvantGarde Book</li>      
+     <li>AvantGarde Book Oblique</li>      
+     <li>AvantGarde Demi</li>      
+     <li>AvantGarde Demi Oblique</li>      
+     <li>Bookman Light</li>      
+     <li>Bookman Light Italic</li>      
+     <li>Bookman Demi</li>      
+     <li>Bookman Demi Italic</li>      
+     <li>Courier</li>      
+     <li>Courier Oblique</li>      
+     <li>Courier Bold</li>      
+     <li>Courier Bold Oblique</li>      
+     <li>Helvetica</li>      
+     <li>Helvetica Oblique</li>      
+     <li>Helvetica Bold</li>      
+     <li>Helvetica Bold Oblique</li>      
+     <li>Helvetica Narrow</li>      
+     <li>Helvetica Narrow Oblique</li>      
+     <li>Helvetica Narrow Bold</li>      
+     <li>Helvetica Narrow Bold Oblique</li>      
+     <li>New Century Schoolbook Roman</li>      
+     <li>New Century Schoolbook Italic</li>      
+     <li>New Century Schoolbook Bold</li>      
+     <li>New Century Schoolbook Bold Italic</li>      
+     <li>Palatino Roman</li>      
+     <li>Palatino Italic</li>      
+     <li>Palatino Bold</li>      
+     <li>Palatino Bold Italic</li>      
+     <li>Symbol</li>      
+     <li>Zapf Chancery Medium Italic</li>      
+     <li>Zapf Dingbats</li>      
+     </ul>
+
+     However, this script is post-processing the gnuplot layout of the text
+     using the default font of Times size 10, and will not shift text
+     around, so you may have text running into other plot elements.  See
+     also notes about changing the font size (<a
+     href="#fontsz">fontsz</a>=).
+
+</p></li>
+
+<li><p><a name="fontsz"><strong>fontsz=</strong></a><br>
+     Specifies a different font size to be globally applied.  As for
+     changing the font face (<a href="#fontsz">font</a>=), remember that
+     the script is post-processing gnuplot's layout of the text elements of
+     the graph, which will not be changed.  Thus, increasing the size
+     may cause overlaps among items on the graph.  Also note the <a
+     href="#bbfudge">bounding box calculation hacks</a> that this script
+     uses.
+
+</p></li>
+
+<li><p><a name="bbfudge"><strong>bbfudge=</strong></a><br>
+     Changing the <a href="#font">font face</a> or <a
+     href="#fontsz">size</a> requires a change in the bounding box of each
+     text element in the graph.  The proper way to calculate that is to
+     call X library routines to get the text extents, but such an interface
+     is not standard for perl, so my script currently uses hacks to guess
+     at the bounding box differences.  If you find your resulting graph has
+     text clipped on the edge of the graph, or you have too much whitespace
+     at the edges, you can try setting this bounding box fudge parameter.
+     Its default value is 1.0; a larger value increases the bounding
+     boxes while a smaller-than-1 value decreases the boxes.
+
 </p></li>
 
 <li><p><strong>extraops=</strong><br>
@@ -476,6 +609,18 @@ suggestions</a> rather than using -png.
 </li>
 
 <li>
+<p>A cluster-of-stacked-bars graph.<br>
+<a href="cluster_stacked.perf">[source file]</a></p>
+<img src="cluster_stacked.png">
+</li>
+
+<li>
+<p>An example of changing the font.<br>
+<a href="font.perf">[source file]</a></p>
+<img src="font.png">
+</li>
+
+<li>
 <p>An example of displaying explicit values.<br>
 <a href="value_label.perf">[source file]</a></p>
 <img src="value_label.png">
@@ -531,8 +676,11 @@ dimension is 700.
 SIZE=700
 %.png: %.tiff
 	mogrify -resize ${SIZE}x${SIZE} -format png $<
-	rm $@.1
-	mv $@.0 $@
+# older mogrify uses these names:
+# rm $@.1
+# mv $@.0 $@
+	rm $*-1.png
+	mv $*-0.png $@
 %.tiff: %.perf
 	bargraph.pl -fig $< | fig2dev -L tiff -m 4 > $@
 </pre>
@@ -561,10 +709,17 @@ Some issues and future work with my current script:
 
 <ul>
 
+<li>I've only tested my latest version on Fedora Core 5's default packages:
+<blockquote><tt>transfig-3.2.4-13.3<br>
+                gnuplot-4.0.0-11
+</blockquote>
+
 <li>When the legend is outside of the graph bounds, its bounding box size
 must be estimated in order to obtain the correct overall bounding box.  I
-use a hack to do this now that uses a maximum size per character.
-Ideally the actual bounding box would be computed.</li>
+use a hack to do this now that uses a maximum size per character.  Ideally
+the actual bounding box would be computed.  See also the <a
+href="#bbfudge">bounding box calculation hacks</a> used for font
+changes.</li>
 
 <li>It would be nice to have an option to automatically place a value
 label, especially for value beyond a specified maximum.</li>
@@ -588,6 +743,10 @@ fill support.
 <!--------------------------------------------------------------------------->
 
 <dl>
+
+<dt><strong>4.0 -- October 16, 2006</strong><dd><p>Added support for
+clusters of stacked bars, font face and size changes, and negative maximum
+values.</p></dt>
 
 <dt><strong>3.0 -- July 15, 2006</strong><dd><p>Added support for custom
 table delimiters, spaces in names, and the =nocommas option.</p></dt>

@@ -38,11 +38,13 @@ Graph parameter types:
 # Main features:
 # * Stacked bars of 9+ datasets
 # * Clustered bars of 8+ datasets
+# * Clusters of stacked bars
 # * Lets you keep your data in table format, or separated but listed in
 #   the same file, rather than requiring each dataset to be in a separate file
 # * Custom gnuplot command pass-through for fine-grained customization
 #    without having a separate tool chain step outside the script
 # * Color control
+# * Font face control and limited font size control
 # * Automatic arithmetic or harmonic mean calculation
 # * Automatic legend creation
 # * Automatic sorting, including sorting into SPEC CPU 2000 integer and 
@@ -51,10 +53,17 @@ Graph parameter types:
 # Multiple data sets can either be separated by =multi,
 #   or in a table with =table.  Does support incomplete datasets,
 #   but issues warning.
+# For clusters of stacked bars, separate your stacked data for each
+#   cluster with =multi or place in a table, and separate each cluster
+#   with =multimulti
 # For complete documentation see
 #   http://www.burningcutlery.com/derek/bargraph/
 
-# This is version 3.0.
+# This is version 4.0.
+# Changes in version 4.0, released October 16, 2006:
+#    * added support for clusters of stacked bars
+#    * added support for font face and size changes
+#    * added support for negative maximum values
 # Changes in version 3.0, released July 15, 2006:
 #    * added support for spaces and quotes in x-axis labels
 #    * added support for missing values in table format
@@ -67,11 +76,56 @@ Graph parameter types:
 #      - fix > 9 dataset color bug
 #      - support > 25 stacked bars
 
+# we need special support for bidirectional pipe
+use IPC::Open2;
+
 ###########################################################################
 ###########################################################################
 
-# we need special support for bidirectional pipe
-use IPC::Open2;
+# The full set of Postscript fonts supported by FIG
+%fig_font = (
+    'Default'                            => -1,      
+    'Times Roman'                        =>  0,      
+    # alias
+    'Times'                              =>  0,      
+    'Times Italic'                       =>  1,      
+    'Times Bold'                         =>  2,      
+    'Times Bold Italic'                  =>  3,      
+    'AvantGarde Book'                    =>  4,      
+    'AvantGarde Book Oblique'            =>  5,      
+    'AvantGarde Demi'                    =>  6,      
+    'AvantGarde Demi Oblique'            =>  7,      
+    'Bookman Light'                      =>  8,      
+    'Bookman Light Italic'               =>  9,      
+    'Bookman Demi'                       => 10,      
+    'Bookman Demi Italic'                => 11,      
+    'Courier'                            => 12,      
+    'Courier Oblique'                    => 13,      
+    'Courier Bold'                       => 14,      
+    'Courier Bold Oblique'               => 15,      
+    'Helvetica'                          => 16,      
+    'Helvetica Oblique'                  => 17,      
+    'Helvetica Bold'                     => 18,      
+    'Helvetica Bold Oblique'             => 19,      
+    'Helvetica Narrow'                   => 20,      
+    'Helvetica Narrow Oblique'           => 21,      
+    'Helvetica Narrow Bold'              => 22,      
+    'Helvetica Narrow Bold Oblique'      => 23,      
+    'New Century Schoolbook Roman'       => 24,      
+    'New Century Schoolbook Italic'      => 25,      
+    'New Century Schoolbook Bold'        => 26,      
+    'New Century Schoolbook Bold Italic' => 27,      
+    'Palatino Roman'                     => 28,      
+    'Palatino Italic'                    => 29,      
+    'Palatino Bold'                      => 30,      
+    'Palatino Bold Italic'               => 31,      
+    'Symbol'                             => 32,      
+    'Zapf Chancery Medium Italic'        => 33,      
+    'Zapf Dingbats'                      => 34,      
+);
+
+###########################################################################
+###########################################################################
 
 # default is to output eps
 $output = "eps";
@@ -97,12 +151,20 @@ while ($#ARGV >= 0) {
 die $usage if ($#ARGV >= 0 || $graph eq "");
 open(IN, "< $graph") || die "Couldn't open $graph";
 
-$multiset = 0;
+# support for clusters and stacked
 $stacked = 0;
-
+$stackcount = 1;
+$clustercount = 1;
+$plotcount = 1; # multi datasets to cycle colors through
 $dataset = 0;
 $table = 0;
 # leave $column undefined by default
+
+# support for clusters of stacked
+$stackcluster = 0;
+$groupcount = 1;
+$grouplabels = 0;
+$groupset = 0;
 
 $title = "";
 $xlabel = "";
@@ -161,6 +223,11 @@ $plot_depth = 98;
 
 $add_commas = 1;
 
+$font_face = $fig_font{'Default'};
+$font_size = 10.0;
+# let user have some control over font bounding box heuristic
+$bbfudge = 1.0;
+
 while (<IN>) {
     next if (/^\#/ || /^\s*$/);
     # line w/ = is a control line (except =>)
@@ -170,20 +237,42 @@ while (<IN>) {
             s/=cluster$splitby//;
             chop;
             @legend = split($splitby, $_);
-            $multiset = $#legend + 1;
+            $clustercount = $#legend + 1;
+            $plotcount = $clustercount;
         } elsif (/^=stacked(.)/) {
             $splitby = $1;
             s/=stacked$splitby//;
             chop;
             @legend = split($splitby, $_);
-            $multiset = $#legend + 1;
+            $stackcount = $#legend + 1;
+            $plotcount = $stackcount;
             $stacked = 1;
             # reverse order of datasets
             $dataset = $#legend;
+        } elsif (/^=stackcluster(.)/) {
+            $splitby = $1;
+            s/=stackcluster$splitby//;
+            chop;
+            @legend = split($splitby, $_);
+            $stackcount = $#legend + 1;
+            $plotcount = $stackcount;
+            $stackcluster = 1;
+            # reverse order of datasets
+            $dataset = $#legend;
+            # FIXME: two types of means: for stacked (mean bar per cluster)
+            # or for cluster (cluster of stacked bars)
+            $use_mean = 0;
+        } elsif (/^=multimulti\s*(.*)/) {
+            if (!($groupset == 0 && $dataset == $stackcount-1)) {
+                $groupset++;
+                $dataset = $stackcount-1;
+            }
+            $groupname[$groupset] = $1;
+            $grouplabels = 1 if ($groupname[$groupset] ne "");
         } elsif (/^=multi/) {
             die "Neither cluster nor stacked specified for multiple dataset"
-                if (!$multiset);
-            if ($stacked) {
+                if ($plotcount == 1);
+            if ($stacked || $stackcluster) {
                 # reverse order of datasets
                 $dataset--;
             } else {
@@ -215,16 +304,18 @@ while (<IN>) {
         } elsif (/^=sort/) { # don't prevent match of =sortbmarks
             $sort = 1;
         } elsif (/^=arithmean/) {
+            die "Stacked-clustered does not suport mean" if ($stackcluster);
             $use_mean = 1;
             $arithmean = 1;
         } elsif (/^=harmean/) {
+            die "Stacked-clustered does not suport mean" if ($stackcluster);
             $use_mean = 1;
         } elsif (/^meanlabel=(.*)$/) {
             $mean_label = $1;
-        } elsif (/^min=([\d\.]+)/) {
+        } elsif (/^min=([-\d\.]+)/) {
             $ymin = $1;
             $calc_min = 0;
-        } elsif (/^max=([\d\.]+)/) {
+        } elsif (/^max=([-\d\.]+)/) {
             $ymax = $1;
         } elsif (/^=norotate/) {
             $xticsopts = "";
@@ -256,6 +347,17 @@ while (<IN>) {
             $extra_gnuplot_cmds .= "$1\n";
         } elsif (/^=nocommas/) {
             $add_commas = 0;
+        } elsif (/^font=(.+)/) {
+            if (defined($fig_font{$1})) {
+                $font_face = $fig_font{$1};
+            } else {
+                @known_fonts = keys(%fig_font);
+                die "Unknown font \"$1\": known fonts are @known_fonts";
+            }
+        } elsif (/^fontsz=(.+)/) {
+            $font_size = $1;
+        } elsif (/^bbfudge=(.+)/) {
+            $bbfudge = $1;
         } else {
             die "Unknown command $_\n";
         }
@@ -277,8 +379,8 @@ while (<IN>) {
         } else {
             @table_entry = split($table_splitby, $_);
         }
-        if ($#table_entry != $multiset) { # not +1 since bmark
-            print STDERR "WARNING: table format error on line $_: found $#table_entry entries, expecting $multiset entries\n";
+        if ($#table_entry != $plotcount) { # not +1 since bmark
+            print STDERR "WARNING: table format error on line $_: found $#table_entry entries, expecting $plotcount entries\n";
         }
         # remove leading and trailing spaces, and escape quotes
         $table_entry[0] =~ s/^\s*//;
@@ -288,20 +390,20 @@ while (<IN>) {
         for ($i=1; $i<=$#table_entry; $i++) {
             $table_entry[$i] =~ s/^\s*//;
             $table_entry[$i] =~ s/\s*$//;
-            if ($stacked) {
+            if ($stacked || $stackcluster) {
                 # reverse order of datasets
-                $dataset = $multiset-1 - ($i-1);
+                $dataset = $stackcount-1 - ($i-1);
             } else {
                 $dataset = $i-1;
             }
             $val = get_val($table_entry[$i], $dataset);
-            if ($stacked && $dataset < $multiset-1) {
+            if (($stacked || $stackcluster) && $dataset < $stackcount-1) {
                 # need to add prev bar to stick above
-                $entry{$bmark,$dataset+1} =~ /([\d\.]+)/;
+                $entry{$groupset,$bmark,$dataset+1} =~ /([-\d\.]+)/;
                 $val += $1;
             }
             if ($val ne '') {
-                $entry{$bmark,$dataset} = "$val\n";
+                $entry{$groupset,$bmark,$dataset} = "$val\n";
             } # else, leave undefined
         }
         goto nextiter;
@@ -318,7 +420,7 @@ while (<IN>) {
             die "Column $column out of bounds" if ($column > 1 + $#columns);
             $val_string = $columns[$column - 1];
         }
-    } elsif (/^\s*(.+)\s+([\d\.]+)\s*$/) {
+    } elsif (/^\s*(.+)\s+([-\d\.]+)\s*$/) {
         $bmark = $1;
         $val_string = $2;
         # remove leading spaces, and escape quotes
@@ -333,18 +435,18 @@ while (<IN>) {
 
     # strip out trailing %
     $val_string =~ s/%$//;
-    if ($val_string !~ /^[\d\.]+$/) {
+    if ($val_string !~ /^[-\d\.]+$/) {
         print STDERR "WARNING: non-numeric value \"$val_string\" for $bmark\n";
     }
 
     $val = get_val($val_string, $dataset);
-    if ($stacked && $dataset < $multiset-1) {
+    if (($stacked || $stackcluster) && $dataset < $stackcount-1) {
         # need to add prev bar to stick above
         # remember that we're walking backward
-        $entry{$bmark,$dataset+1} =~ /([\d\.]+)/;
+        $entry{$groupset,$bmark,$dataset+1} =~ /([-\d\.]+)/;
         $val += $1;
     }
-    $entry{$bmark,$dataset} = "$val\n";
+    $entry{$groupset,$bmark,$dataset} = "$val\n";
 
   nextiter:
     if (!defined($names{$bmark})) {
@@ -357,9 +459,29 @@ close(IN);
 ###########################################################################
 ###########################################################################
 
-$plotcount = 1;
-if ($multiset) {
-    $plotcount = $multiset;
+$groupcount = $groupset + 1;
+
+$clustercount = $bmarks_seen if ($stackcluster);
+
+$boxwidth=0.5;
+if (!$stacked) {
+    if ($clustercount == 2) {
+        $boxwidth=0.3;
+    } elsif ($clustercount == 3) {
+        $boxwidth=0.26;
+    } elsif ($clustercount == 4) {
+        $boxwidth=0.2;
+    } elsif ($clustercount == 5) {
+        $boxwidth=0.16;
+    } elsif ($clustercount == 6) {
+        $boxwidth=0.12;
+    } elsif ($clustercount == 7) {
+        $boxwidth=0.11;
+    } elsif ($clustercount == 8) {
+        $boxwidth=0.08;
+    } elsif ($clustercount >= 9) {
+        $boxwidth=0.75/$clustercount;
+    }
 }
 
 if ($sort) {
@@ -375,7 +497,7 @@ if ($sort) {
 
 if ($use_mean) {
     for ($i=0; $i<$plotcount; $i++) {
-        if ($stacked) {
+        if ($stacked || $stackcluster) {
             $category = $plotcount-$i;
         } else {
             $category = $i;
@@ -395,7 +517,7 @@ if ($use_mean) {
             $harmean[$i] = ($harmean[$i] - 1);
         }
     }
-    if ($stacked) {
+    if ($stacked || $stackcluster) {
         for ($i=$plotcount-2; $i>=0; $i--) {
             # need to add prev bar to stick above
             # since reversed, prev is +1
@@ -406,14 +528,38 @@ if ($use_mean) {
 
 # x-axis labels
 $xtics = "";
-$xmax = 1;
-foreach $b (@sorted) {
-    if ($usexlabels) {
-        $xtics .= "\"$b\" $xmax, ";
-    } else {
-        $xtics .= "\"\" $xmax, ";
+for ($g=0; $g<$groupcount; $g++) {
+    $item = 1;
+    foreach $b (@sorted) {
+        if ($stackcluster) {
+            $xval = get_xval($g, $item, $item);
+        } else {
+            $xval = $item;
+        }
+        if ($usexlabels) {
+            $label = $b;
+        } else {
+            if ($stackcluster && $grouplabels && $item==&ceil($bmarks_seen/2)) {
+                $label = $groupname[$g];
+            } else {
+                $label = "";
+            }
+        }
+        $xtics .= "\"$label\" $xval, ";
+        $item++;
     }
-    $xmax++;
+    if ($stackcluster && $grouplabels && $usexlabels) {
+        $label = sprintf("set label \"%s\" at %d,0 center",
+                         $groupname[$g], $g+1);
+        $extra_gnuplot_cmds .= "$label\n";
+    }
+}
+# For stackcluster we need to find the y value for the group labels
+# so we look where gnuplot put the x label.  If the user specifies none,
+# we add our own.
+$unique_xlabel = "UNIQUEVALUETOLOOKFOR";
+if ($stackcluster && $xlabel eq "") {
+    $xlabel = $unique_xlabel;
 }
 if ($use_mean) {
     if ($usexlabels) {
@@ -425,11 +571,18 @@ if ($use_mean) {
             }
         }
     } else {
-        $xtics .= "\"\" $xmax, ";
+        $xtics .= "\"\" $item, ";
     }
-    $xtics .= "\"$mean_label\" $xmax, ";
-    $xmax++;
+    if ($stackcluster) {
+        $xval = get_xval($g, $item, $item);
+    } else {
+        $xval = $item;
+    }
+    $xtics .= "\"$mean_label\" $xval, ";
+    $item++;
 }
+$xmax = &ceil($xval);
+
 # lose the last comma-space
 chop $xtics;
 chop $xtics;
@@ -453,27 +606,6 @@ if ($calc_min) {
         $lineat = "f(x)=0,f(x) notitle,"; # put line at 0
     } # otherwise leave ymin at 0
 } # otherwise leave ymin at user-specified value
-
-$boxwidth=0.5;
-if (!$stacked) {
-    if ($plotcount == 2) {
-        $boxwidth=0.3;
-    } elsif ($plotcount == 3) {
-        $boxwidth=0.26;
-    } elsif ($plotcount == 4) {
-        $boxwidth=0.2;
-    } elsif ($plotcount == 5) {
-        $boxwidth=0.16;
-    } elsif ($plotcount == 6) {
-        $boxwidth=0.12;
-    } elsif ($plotcount == 7) {
-        $boxwidth=0.11;
-    } elsif ($plotcount == 8) {
-        $boxwidth=0.08;
-    } elsif ($plotcount >= 9) {
-        $boxwidth=0.75/$plotcount;
-    }
-}
 
 ###########################################################################
 ###########################################################################
@@ -592,7 +724,7 @@ if ($patterns) {
             }
         }
     }
-    if ($stacked) {
+    if ($stacked || $stackcluster) {
         # reverse order for stacked since we think of bottom as "first"
         for ($i=0; $i<$plotcount; $i++) {
             $tempcolor[$i]=$fillcolor[$i];
@@ -615,7 +747,7 @@ if ($patterns) {
     $bwfill[9]=11;
     $bwfill[10]=6;
     for ($i=0; $i<$plotcount; $i++) {
-        if ($stacked) {
+        if ($stacked || $stackcluster) {
             # reverse order for stacked since we think of bottom as "first"
             $fillstyle[$i]=$bwfill[$plotcount-$i-1];
         } else {
@@ -689,39 +821,43 @@ if ($extra_gnuplot_cmds ne "") {
 # plot data from stdin, separate style for each so can distinguish
 # in resulting fig
 printf GNUPLOT "plot %s ", $lineat;
-for ($i=0; $i<$plotcount; $i++) {
-    if ($i != 0) {
-        printf GNUPLOT ", ";
-    }
-    if ($patterns) {
-        printf GNUPLOT "'-' notitle with boxes fs pattern %d", ($i % $max_patterns);
-    } else {
-        printf GNUPLOT "'-' notitle with boxes %d", $i+3;
+for ($g=0; $g<$groupcount; $g++) {
+    for ($i=0; $i<$plotcount; $i++) {
+        if ($i != 0 || $g != 0) {
+            printf GNUPLOT ", ";
+        }
+        if ($patterns) {
+            printf GNUPLOT "'-' notitle with boxes fs pattern %d", ($i % $max_patterns);
+        } else {
+            printf GNUPLOT "'-' notitle with boxes %d", $i+3;
+        }
     }
 }
 print GNUPLOT "\n";
 
-for ($i=0; $i<$plotcount; $i++) {
-    $line = 1;
-    foreach $b (@sorted) {
-        # support missing values in some datasets
-        if (defined($entry{$b,$i})) {
-            $xval = get_xval($i, $line);
-            print GNUPLOT "$xval, $entry{$b,$i}";
-            $line++;
-        } else {
-            print STDERR "WARNING: missing value for $b in dataset $i\n";
-            $line++;
+for ($g=0; $g<$groupcount; $g++) {
+    for ($i=0; $i<$plotcount; $i++) {
+        $line = 1;
+        foreach $b (@sorted) {
+            # support missing values in some datasets
+            if (defined($entry{$g,$b,$i})) {
+                $xval = get_xval($g, $i, $line);
+                print GNUPLOT "$xval, $entry{$g,$b,$i}";
+                $line++;
+            } else {
+                print STDERR "WARNING: missing value for $b in dataset $i\n";
+                $line++;
+            }
         }
+        # skip over missing values to put harmean at end
+        $line = $xmax - 1;
+        if ($use_mean) {
+            $xval = get_xval($g, $i, $line);
+            print GNUPLOT "$xval, $harmean[$i]\n";
+        }
+        # an e separates each dataset
+        print GNUPLOT "e\n";
     }
-    # skip over missing values to put harmean at end
-    $line = $xmax - 1;
-    if ($use_mean) {
-        $xval = get_xval($i, $line);
-        print GNUPLOT "$xval, $harmean[$i]\n";
-    }
-    # an e separates each dataset
-    print GNUPLOT "e\n";
 }
 
 close(GNUPLOT);
@@ -764,12 +900,25 @@ open(FIG2DEV, "| $fig2dev") || die "Couldn't open $fig2dev\n";
 #     just     depth      font  fontsz rotation  flag boundy boundx   x    y
 #                                     angle(rads)             
 # justification: 0=center, 1=left, 2=right
-# flag (or-ed together): 1=rigid, 2=special, 8=hidden
-# boundy: 10-pt default latex font: 75 + 30 above + 30 below
+# flag (or-ed together): 1=rigid, 2=special, 4=PS fonts, 8=hidden
+# boundy and boundx: should be calculated from X::TextExtents but
+#   users won't have X11::Lib installed so we use heuristics:
+#  boundy: 10-pt default Times font: 75 + 30 above + 30 below
+#          Helvetica is 90 base
+#          FIXME: what about Courier?
 #   => 135 if both above and below line chars present, 105 if only above, etc.
-# boundx: 10-pt default latex font: M=150, m=120, i=45, ave lowercase=72, ave uppercase=104
+#  boundx: 10-pt default latex font: M=150, m=120, i=45, ave lowercase=72, ave uppercase=104
 #   that's ave over alphabet, a capitalized word seems to be closer to 69 ave
 #   if have bounds wrong then fig2dev will get eps bounding box wrong
+# font size: y increases by 15 per 2-point font increase
+
+if ($stackcluster && $grouplabels && $usexlabels) {
+    # For stackcluster we need to find the y value for the group labels
+    # FIXME: we assume an ordering: xlabel followed by each group label, in
+    # that order, else we'll mess up and need multiple passes here!
+    $grouplabel_y = 0;
+    $groupset = 0;
+}
 
 while (<FIG>) {
     if ($debug_seefig_unmod) {
@@ -791,6 +940,40 @@ $figcolorins|;
     # Next are in groups of 7, each with colors 0 through 6 and
     # with gap of group# * 3.000 => index is (color + 5 + 7*(gap/3 - 1))
     s|^2 1 1 1 ([0-9]) \1 $plot_depth 0 -1 +([0-9]+).000 0 0 0 0 0 5|2 1 0 1 -1  $fillcolor[$1+5+7*($2/3-1)]  $depth[$1+5+7*($2/3-1)] 0 $fillstyle[$1+5+7*($2/3-1)]     0.000 0 0 0 0 0 5|;
+
+    if ($stackcluster && $grouplabels && $usexlabels) {
+        if (/^4\s+.*\s+(\d+)\s+$xlabel\\001/) {
+            $grouplabel_y = $1;
+            if ($xlabel eq $unique_xlabel) {
+                s/^.*$//; # remove
+            } else {
+                # HACK to push below
+                $newy = $grouplabel_y + 160 + &font_bb_diff_y($font_size-1);
+                s/(\s+)\d+(\s+$xlabel\\001)/\1$newy\2/;
+            }
+        }
+        if (/^4\s+.*$groupname[$groupset]\\001/) {
+            s/(\s+)\d+(\s+$groupname[$groupset]\\001)/\1$grouplabel_y\2/;
+            $groupset++;
+        }
+    }
+
+    # Custom fonts
+    if (/^(4\s+\d+\s+[-\d]+\s+\d+\s+[-\d]+)\s+[-\d]+\s+([\d\.]+)\s+([\d\.]+)\s+(\d+)\s+([\d\.]+)\s+([\d\.]+)(\s+[\d\.]+\s+[\d\.]+) (.*)\\001/) {
+        $prefix = $1;
+        $oldsz = $2;
+        $orient = $3;
+        $flags = $4;
+        $szy = $5;
+        $szx = $6;
+        $text = $8; # $7 is position
+        $textlen = length($text);
+        $newy = $szy + &font_bb_diff_y($oldsz);
+        $newx = $szx + $textlen * &font_bb_diff_x($oldsz);
+        s|^$prefix\s+[-\d]+\s+$oldsz\s+$orient\s+$flags\s+$szy\s+$szx|$prefix $font_face $font_size $orient $flags $newy $newx|;
+    } elsif (/^4/) {
+        print STDERR "WARNING: unknown font element $_";
+    }
 
     if ($add_commas) {
         # Add commas between 3 digits for text in thousands or millions
@@ -826,7 +1009,7 @@ if ($plotcount > 1) {
     }
     for ($i=0; $i<$plotcount; $i++) {
         # legend was never reversed, reverse it here
-        if ($stacked) {
+        if ($stacked || $stackcluster) {
             $legidx = $plotcount - 1 - $i;
         } else {
             $legidx = $i;
@@ -836,8 +1019,10 @@ if ($plotcount > 1) {
         # use width*70, and assume full height 135 (see fig notes above)
         $leglen = length $legend[$legidx];
         printf FIG2DEV
-"4 0 0 %d 0 0 9 0.0000 4 135 %d %d %d %s\\001
-", $legend_depth, $leglen*70, $lx+225, $ly+186+157*$i, $legend[$legidx];
+"4 0 0 %d 0 %d %d 0.0000 4 %d %d %d %d %s\\001
+", $legend_depth, $font_face, $font_size - 1,
+135 + &font_bb_diff_y(9), $leglen * (70 + &font_bb_diff_x(9)),
+$lx+225, $ly+186+157*$i, $legend[$legidx];
     }
 }
 
@@ -879,21 +1064,31 @@ sub get_val($, $)
     return $val;
 }
 
-sub get_xval($, $)
+sub get_xval($, $, $)
 {
     # item ranges from 0..plotcount-1
-    my ($dset, $item) = @_;
-    my ($xvalue);
-    if ($stacked || $plotcount == 1) {
+    my ($gset, $dset, $item) = @_;
+    my $xvalue;
+    if ($stacked || $clustercount == 1) {
         $xvalue = $item;
-    } elsif ($plotcount % 2 == 0) {
-        # we want the sequence ...,-5/2,-3/2,-1/2,1/2,3/2,5/2,...
-        $xvalue = $item + $boxwidth/2 * (2*$dset-($plotcount-1));
+    } elsif ($stackcluster) {
+        $xvalue = &cluster_xval($gset+1, $item-1);
     } else {
-        # we want the sequence ...,-2,-1,0,1,2,,...
-        $xvalue = $item + $boxwidth * ($dset - ($plotcount-1)/2);
+        $xvalue = &cluster_xval($item, $dset);
     }
     return $xvalue;
+}
+
+sub cluster_xval($, $)
+{
+    my ($base, $dset) = @_;
+    if ($clustercount % 2 == 0) {
+        # we want the sequence ...,-5/2,-3/2,-1/2,1/2,3/2,5/2,...
+        $xvalue = $base + $boxwidth/2 * (2*$dset-($clustercount-1));
+    } else {
+        # we want the sequence ...,-2,-1,0,1,2,,...
+        $xvalue = $base + $boxwidth * ($dset - ($clustercount-1)/2);
+    }
 }
 
 sub sort_bmarks()
@@ -908,4 +1103,38 @@ sub bmark_group($)
     return 2 if ($bmarks_int =~ $bmark);
     return 3 if ($bmarks_jvm =~ $bmark);
     return 4; # put unknowns at end
+}
+
+sub font_bb_diff_y($)
+{
+    my ($oldsz) = @_;
+    # This is an inadequate hack: font bounding boxes vary
+    # by 15 per 2-point font size change for smaller chars, but up
+    # to 30 per 2-point font size for larger chars.  We try to use a
+    # single value here for all chars.  Overestimating is better than under.
+    # And of course any error accumulates over larger sizes.
+    # The real way is to call XTextExtents.
+    $diff = ($font_size - $oldsz)*15*$bbfudge;
+    if ($font_face >= $fig_font{'Helvetica'} &&
+        $font_face <= $fig_font{'Helvetica Narrow Bold Oblique'}) {
+        $diff += 15*$bbfudge; # extra height for Helvetica
+    }
+    return &ceil($diff);
+}
+
+sub font_bb_diff_x($)
+{
+    my ($oldsz) = @_;
+    # This is an inadequate hack: font bounding boxes vary
+    # by 15 per 2-point font size change for smaller chars, but up
+    # to 30 per 2-point font size for larger chars.  We try to use a
+    # single value here for all chars.  Overestimating is better than under.
+    # And of course any error accumulates over larger sizes.
+    # The real way is to call XTextExtents.
+    return &ceil(($font_size - $oldsz)*10*$bbfudge);
+}
+
+sub ceil {
+    my ($n) = @_;
+    return int($n + ($n <=> 0));
 }

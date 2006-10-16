@@ -232,8 +232,8 @@ suggestions</a> rather than using -png.
      </pre>
 
      The clusters are then separated (and optionally named) by <a
-     href="#multimulti">=multimulti</a>.  If any name is given in any <a
-     href="#multimulti">=multimulti</a> parameter, then cluster labels are
+     href="#multimulti">multimulti=</a>.  If any name is given in any <a
+     href="#multimulti">multimulti=</a> parameter, then cluster labels are
      used.  If there is no <a href="#xlabel">xlabel=</a>, then the cluster
      labels are placed below the x axis tic mark labels.  If there are no x
      tic marks (<a href="#noxlabels">=noxlabels</a>) then the cluster
@@ -247,23 +247,23 @@ suggestions</a> rather than using -png.
 
 </p></li>
 
-<li><p><a name="multimulti"><strong>=multimulti</strong></a><br>
+<li><p><a name="multimulti"><strong>multimulti=</strong></a><br>
      Separates the <a href="#table">table</a> or <a
      href="#multi">=multi</a> delimited data of a <a
      href="#stackcluster">=stackclustertable</a> graph, and optionally
-     names each cluster with the string after the <tt>=multimulti</tt>
+     names each cluster with the string after the <tt>multimulti=</tt>
      token and separating whitespace.  An example:
 
      <pre>
      =stackcluster;Basic Blocks;Traces;Hashtables;Stubs
      =table
-     =multimulti Private Caches
+     multimulti=Private Caches
      ammp             25.635 23.094 14.780 5.543 
      applu            25.035 27.375 14.974 4.913 
-     =multimulti Shared Caches
+     multimulti=Shared Caches
      ammp             27.863 18.913 15.536 5.404
      applu            24.501 18.657 11.689 4.720
-     =multimulti Persistent Caches
+     multimulti=Persistent Caches
      ammp             17.863 11.913 19.536 9.404
      applu            34.501 12.657 18.689 7.720
      </pre>     

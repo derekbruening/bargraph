@@ -54,8 +54,8 @@ Graph parameter types:
 #   or in a table with =table.  Does support incomplete datasets,
 #   but issues warning.
 # For clusters of stacked bars, separate your stacked data for each
-#   cluster with =multi or place in a table, and separate each cluster
-#   with =multimulti
+#   cluster with =multi or place in a table, and separate (and optionally
+#   name) each cluster with multimulti=
 # For complete documentation see
 #   http://www.burningcutlery.com/derek/bargraph/
 
@@ -262,7 +262,7 @@ while (<IN>) {
             # FIXME: two types of means: for stacked (mean bar per cluster)
             # or for cluster (cluster of stacked bars)
             $use_mean = 0;
-        } elsif (/^=multimulti\s*(.*)/) {
+        } elsif (/^multimulti=(.*)/) {
             if (!($groupset == 0 && $dataset == $stackcount-1)) {
                 $groupset++;
                 $dataset = $stackcount-1;

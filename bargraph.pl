@@ -59,7 +59,10 @@ Graph parameter types:
 # For complete documentation see
 #   http://www.burningcutlery.com/derek/bargraph/
 
-# This is version 4.0.
+# This is version 4.1.
+# Changes in version 4.1, released April 1, 2007:
+#    * fixed bug in handling scientific notation
+#    * fixed negative offset font handling bug
 # Changes in version 4.0, released October 16, 2006:
 #    * added support for clusters of stacked bars
 #    * added support for font face and size changes
@@ -399,7 +402,7 @@ while (<IN>) {
             $val = get_val($table_entry[$i], $dataset);
             if (($stacked || $stackcluster) && $dataset < $stackcount-1) {
                 # need to add prev bar to stick above
-                $entry{$groupset,$bmark,$dataset+1} =~ /([-\d\.]+)/;
+                $entry{$groupset,$bmark,$dataset+1} =~ /([-\d\.eE]+)/;
                 $val += $1;
             }
             if ($val ne '') {
@@ -959,7 +962,7 @@ $figcolorins|;
     }
 
     # Custom fonts
-    if (/^(4\s+\d+\s+[-\d]+\s+\d+\s+[-\d]+)\s+[-\d]+\s+([\d\.]+)\s+([\d\.]+)\s+(\d+)\s+([\d\.]+)\s+([\d\.]+)(\s+[\d\.]+\s+[\d\.]+) (.*)\\001/) {
+    if (/^(4\s+\d+\s+[-\d]+\s+\d+\s+[-\d]+)\s+[-\d]+\s+([\d\.]+)\s+([\d\.]+)\s+(\d+)\s+([\d\.]+)\s+([\d\.]+)(\s+[-\d\.]+\s+[-\d\.]+) (.*)\\001/) {
         $prefix = $1;
         $oldsz = $2;
         $orient = $3;

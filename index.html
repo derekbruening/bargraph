@@ -45,7 +45,8 @@ automatic averaging and other features.
 </p>
 
 <p>The script is <a href="bargraph.pl">bargraph.pl</a>, released under
-the <a href="gpl.txt">GPL</a>.</p>
+the <a href="gpl.txt">GPL</a>.
+<br><a href="bargraph.pl">Version 4.2</a> was released May 25, 2007.</p>
 
 <p>Features:
 <ul>
@@ -715,6 +716,23 @@ Some issues and future work with my current script:
 <blockquote><tt>transfig-3.2.4-13.3<br>
                 gnuplot-4.0.0-11</tt>
 </blockquote>
+As well as a custom install of gnuplot 4.2, for bargraph.pl release 
+version 4.2.
+</li>
+
+<li>Logarithmic axes are not fully supported.  For now you can get
+them to work with extra options to set the minimum, as well as
+to use a relative boxwidth since gnuplot 4.2 no longer narrows the boxes
+as x increases:
+    <pre>
+    extraops=set logscale
+    extraops=set xrange [1:28]
+    extraops=set yrange [1:]
+    # in gnuplot 4.2, boxwidth does not shrink, so we don't want the default
+    # of 0.5 absolute:
+    extraops=set boxwidth 0.5 relative
+    </pre>
+</li>
 
 <li>When the legend is outside of the graph bounds, its bounding box size
 must be estimated in order to obtain the correct overall bounding box.  I
@@ -745,6 +763,12 @@ fill support.
 <!--------------------------------------------------------------------------->
 
 <dl>
+
+<dt><strong>4.2 -- May 25, 2007</strong><dd><p>Added support for gnuplot
+4.2 (the default fig styles changed).</p></dt>
+
+<dt><strong>4.1 -- April 1, 2007</strong><dd><p>Fixed bugs in handling
+scientific notation and negative offsets in fonts.</p></dt>
 
 <dt><strong>4.0 -- October 16, 2006</strong><dd><p>Added support for
 clusters of stacked bars, font face and size changes, and negative maximum

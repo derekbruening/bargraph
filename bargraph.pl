@@ -24,7 +24,9 @@
 ###########################################################################
 ###########################################################################
 
-$usage = "Usage: $0 [-gnuplot] [-fig] [-pdf] [-png] [-eps] <graphfile>
+$usage = "
+Usage: $0 [-gnuplot] [-fig] [-pdf] [-png] [-eps]
+  [-gnuplot-path <path>] [-fig2dev-path <path>] <graphfile>
 
 File format:
 <graph parameters>
@@ -59,7 +61,9 @@ Graph parameter types:
 # For complete documentation see
 #   http://www.burningcutlery.com/derek/bargraph/
 
-# This is version 4.1.
+# This is version 4.2.
+# Changes in version 4.2, released May 25, 2007:
+#    * handle gnuplot 4.2 fig terminal output
 # Changes in version 4.1, released April 1, 2007:
 #    * fixed bug in handling scientific notation
 #    * fixed negative offset font handling bug
@@ -132,10 +136,16 @@ use IPC::Open2;
 
 # default is to output eps
 $output = "eps";
+$gnuplot_path = "gnuplot";
+$fig2dev_path = "fig2dev";
+$debug_seefig_unmod = 0;
 
 while ($#ARGV >= 0) {
     if ($ARGV[0] eq '-fig') {
         $output = "fig";
+    } elsif ($ARGV[0] eq '-rawfig') {
+        $output = "fig";
+        $debug_seefig_unmod = 1;
     } elsif ($ARGV[0] eq '-gnuplot') {
         $output = "gnuplot";
     } elsif ($ARGV[0] eq '-pdf') {
@@ -144,6 +154,14 @@ while ($#ARGV >= 0) {
         $output = "png";
     } elsif ($ARGV[0] eq '-eps') {
         $output = "eps";
+    } elsif ($ARGV[0] eq '-gnuplot-path') {
+        die $usage if ($#ARGV <= 0);
+        shift;
+        $gnuplot_path = $ARGV[0];
+    } elsif ($ARGV[0] eq '-fig2dev-path') {
+        die $usage if ($#ARGV <= 0);
+        shift;
+        $fig2dev_path = $ARGV[0];
     } else {
         $graph = $ARGV[0];
         shift;
@@ -466,6 +484,7 @@ $groupcount = $groupset + 1;
 
 $clustercount = $bmarks_seen if ($stackcluster);
 
+# FIXME: absolute boxwidth doesn't work well w/ logarithmic axes
 $boxwidth=0.5;
 if (!$stacked) {
     if ($clustercount == 2) {
@@ -786,7 +805,7 @@ if ($debug_seegnuplot) {
 } else {
     # open a bidirectional pipe to gnuplot to avoid temp files
     # we can read its output back using FIG filehandle
-    $pid = open2(\*FIG, \*GNUPLOT, "gnuplot") || die "Couldn't open2 gnuplot\n";
+    $pid = open2(\*FIG, \*GNUPLOT, "$gnuplot_path") || die "Couldn't open2 gnuplot\n";
 }
 
 printf GNUPLOT "
@@ -874,17 +893,16 @@ exit if ($debug_seegnuplot);
 if ($output eq "fig") {
     $fig2dev = "cat";
 } elsif ($output eq "eps") {
-    $fig2dev = "fig2dev -L eps -n \"$title\"";
+    $fig2dev = "$fig2dev_path -L eps -n \"$title\"";
 } elsif ($output eq "pdf") {
-    $fig2dev = "fig2dev -L pdf -n \"$title\"";
+    $fig2dev = "$fig2dev_path -L pdf -n \"$title\"";
 } elsif ($output eq "png") {
-    $fig2dev = "fig2dev -L png -m 2 | convert -transparent white - - ";
+    $fig2dev = "$fig2dev_path -L png -m 2 | convert -transparent white - - ";
 } else {
     die "Error: unknown output type $output\n";
 }
 
 $debug_seefig = 0;
-$debug_seefig_unmod = 0;
 if ($debug_seefig) {
     $fig2dev = "cat";
 }
@@ -923,6 +941,8 @@ if ($stackcluster && $grouplabels && $usexlabels) {
     $groupset = 0;
 }
 
+$set = -1;
+$set_raw = "";
 while (<FIG>) {
     if ($debug_seefig_unmod) {
         print FIG2DEV $_;
@@ -934,15 +954,39 @@ while (<FIG>) {
 $figcolorins|;
 
     # Convert rectangles with line style N to filled rectangles.
-    # We put them at depth 40.
-
-    # First 5 are solid lines of colors 2 through 6
-    # We subtract 2 from color to get index
-    s|^2 1 0 1 ([1-9]) \1 $plot_depth 0 -1     0.000 0 0 0 0 0 5|2 1 0 1 -1  $fillcolor[$1-2]  $depth[$1-2] 0 $fillstyle[$1-2]     0.000 0 0 0 0 0 5|;
-
-    # Next are in groups of 7, each with colors 0 through 6 and
-    # with gap of group# * 3.000 => index is (color + 5 + 7*(gap/3 - 1))
-    s|^2 1 1 1 ([0-9]) \1 $plot_depth 0 -1 +([0-9]+).000 0 0 0 0 0 5|2 1 0 1 -1  $fillcolor[$1+5+7*($2/3-1)]  $depth[$1+5+7*($2/3-1)] 0 $fillstyle[$1+5+7*($2/3-1)]     0.000 0 0 0 0 0 5|;
+    # We put them at depth $plot_depth.
+    # Look for '^2 1 ... 5' to indicate a full box w/ 5 points.
+    if (/^2 1 \S+ \S+ (\S+) \1 $plot_depth 0 -1(\s+\S+){6}\s+5/) {
+        # Rather than hardcode the styles that gnuplot uses for fig (which has
+        # changed), we assume the plots are in sequential order.
+        # We assume that the coordinates are all on the subsequent line,
+        # so that we can use the entire first line as our key (else we should pull
+        # out at least line style, line color, and dash gap).
+        $cur_raw = $_;
+        # We need to not convert the plot outline, so we assume that
+        # the first plot box never has a fill of 0 or -1.
+        $cur_fill = $1;
+        if ($set == -1 && ($cur_fill == 0 || $cur_fill == -1)) {
+            # ignore: it's the plot outline
+        } else {
+            if ($cur_raw ne $set_raw || $set == -1) {
+                $set++;
+                $set_raw = $cur_raw;
+                if ($set < $plotcount) {
+                    # For repeats, match the entire line
+                    $xlate{$_} = $set;
+                }
+            }
+            # There are some polylines past the last plot
+            if ($set < $plotcount) {
+                s|^2 1 \S+ \S+ (\S+) \1 $plot_depth 0 -1 +([0-9]+).000|2 1 0 1 -1 $fillcolor[$set] $depth[$set] 0 $fillstyle[$set]     0.000|;
+            } elsif (defined($xlate{$_})) {
+                $repeat = $xlate{$_};
+                # Handle later repeats, like for cluster of stacked
+                s|^2 1 \S+ \S+ (\S+) \1 $plot_depth 0 -1 +([0-9]+).000|2 1 0 1 -1 $fillcolor[$repeat] $depth[$repeat] 0 $fillstyle[$repeat]     0.000|;
+            }
+        }
+    }
 
     if ($stackcluster && $grouplabels && $usexlabels) {
         if (/^4\s+.*\s+(\d+)\s+$xlabel\\001/) {
@@ -983,6 +1027,10 @@ $figcolorins|;
         s|^4 (.*\d)(\d{3}\S*)\\001$|4 $1,$2\\001|; 
         s|^4 (.*\d)(\d{3}),(\d{3}\S*)\\001$|4 $1,$2,$3\\001|; 
     }
+
+    # With gnuplot 4.2, I get a red x axis in some plots w/ negative values (but
+    # not all: FIXME: why?): I'm turning it to black
+    s|^2 1 0 1 4 4 $plot_depth|2 1 0 1 0 0 $plot_depth|;
 
     print FIG2DEV $_;
 }

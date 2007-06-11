@@ -46,7 +46,10 @@ automatic averaging and other features.
 
 <p>The script is <a href="bargraph.pl">bargraph.pl</a>, released under
 the <a href="gpl.txt">GPL</a>.
-<br><a href="bargraph.pl">Version 4.2</a> was released May 25, 2007.</p>
+<br><a href="bargraph.pl">Version 4.2</a> was released May 25, 2007, with
+support for gnuplot 4.2.
+(Note: there seems to be a bug in gnuplot 4.2 where scaling via <tt>set
+size</tt> clips axis labels: currently under investigation.)</p>
 
 <p>Features:
 <ul>
@@ -711,6 +714,10 @@ have it look good at any size:
 Some issues and future work with my current script:
 
 <ul>
+
+<li>There seems to be a bug in gnuplot 4.2 where scaling via <tt>set
+size</tt> clips axis labels to their un-scaled bounds.  I'm currently
+investigating this.</li>
 
 <li>I've only tested my latest version on Fedora Core 5's default packages:
 <blockquote><tt>transfig-3.2.4-13.3<br>

@@ -48,9 +48,10 @@ automatic averaging and other features.
 the <a href="gpl.txt">GPL</a>.
 <br><a href="bargraph.pl">Version 4.2</a> was released May 25, 2007, with
 support for gnuplot 4.2.
-(Note: there is a bug in gnuplot 4.2.0 where scaling via <tt>set size</tt>
-clips axis tic labels: I have <a href="gnuplot-4.2.0-setsize-bugfix.diff">a
-gnuplot 4.2.0 patch</a> for this.)</p>
+(Note: there is a bug in gnuplot 4.2.0 (still there in 4.2.2 as well) where
+scaling via <tt>set size</tt> clips axis tic labels: I have <a
+href="gnuplot-4.2.0-setsize-bugfix.diff">a gnuplot 4.2.0 patch</a> for
+this.)</p>
 
 <p>Features:
 <ul>
@@ -719,7 +720,8 @@ Some issues and future work with my current script:
 <li>There is a bug in gnuplot 4.2.0 where scaling via <tt>set size</tt> clips
 axis tic labels to their un-scaled bounds.  I have
 <a href="gnuplot-4.2.0-setsize-bugfix.diff">a patch</a> that fixes
-this, which I also sent to the gnuplot developers.</li>
+this, which I also sent to the gnuplot developers.
+Update: gnuplot 4.2.2 still contains the bug, but the same patch applies.</li>
 
 <li>I've only tested my latest version on Fedora Core 5's default packages:
 <blockquote><tt>transfig-3.2.4-13.3<br>

@@ -3,8 +3,9 @@
 # bargraph.pl: a bar graph builder that supports stacking and clustering.
 # Modifies gnuplot's output to fill in bars and add a legend.
 #
-# Copyright (C) 2004-2006 Derek Bruening <iye@alum.mit.edu>
+# Copyright (C) 2004-2008 Derek Bruening <iye@alum.mit.edu>
 # http://www.burningcutlery.com/derek/bargraph/
+# Error bar code contributed by Mohammad Ansari.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,7 +26,7 @@
 ###########################################################################
 
 $usage = "
-Usage: $0 [-gnuplot] [-fig] [-pdf] [-png] [-eps]
+Usage: $0 [-gnuplot] [-fig] [-pdf] [-png [-non-transparent]] [-eps]
   [-gnuplot-path <path>] [-fig2dev-path <path>] <graphfile>
 
 File format:
@@ -61,7 +62,13 @@ Graph parameter types:
 # For complete documentation see
 #   http://www.burningcutlery.com/derek/bargraph/
 
-# This is version 4.2.
+# This is version 4.3.
+# Changes in version 4.3, released June 1, 2008:
+#    * added errorbar support (from Mohammad Ansari)
+#    * added support for multiple colors in a single dataset
+#    * added -non-transparent option to disable png transparency
+#    * added option to disable the legend
+#    * added datascale and datasub options
 # Changes in version 4.2, released May 25, 2007:
 #    * handle gnuplot 4.2 fig terminal output
 # Changes in version 4.1, released April 1, 2007:
@@ -139,6 +146,7 @@ $output = "eps";
 $gnuplot_path = "gnuplot";
 $fig2dev_path = "fig2dev";
 $debug_seefig_unmod = 0;
+$png_transparent = 1;
 
 while ($#ARGV >= 0) {
     if ($ARGV[0] eq '-fig') {
@@ -152,6 +160,8 @@ while ($#ARGV >= 0) {
         $output = "pdf";
     } elsif ($ARGV[0] eq '-png') {
         $output = "png";
+    } elsif ($ARGV[0] eq '-non-transparent') {
+        $png_transparent = 0;
     } elsif ($ARGV[0] eq '-eps') {
         $output = "eps";
     } elsif ($ARGV[0] eq '-gnuplot-path') {
@@ -219,6 +229,8 @@ $use_mean = 0;
 $arithmean = 0; # else, harmonic
 # leave $mean_label undefined by default
 
+$datascale = 1;
+$datasub = 0;
 $percent = 0;
 $base1 = 0;
 $yformat = "%.0f";
@@ -226,6 +238,7 @@ $yformat = "%.0f";
 $extra_gnuplot_cmds = "";
 
 # if still 0 later will be initialized to default
+$use_legend = 1;
 $legendx = 0;
 $legendy = 0;
 
@@ -235,6 +248,7 @@ $patterns = 0;
 $max_patterns = 22;
 
 $custom_colors = 0;
+$color_per_datum = 0;
 
 # fig depth: leave enough room for many datasets
 # (for stacked bars we subtract 2 for each)
@@ -248,6 +262,9 @@ $font_face = $fig_font{'Default'};
 $font_size = 10.0;
 # let user have some control over font bounding box heuristic
 $bbfudge = 1.0;
+
+# yerrorbar support
+$yerrorbars = 0;
 
 while (<IN>) {
     next if (/^\#/ || /^\s*$/);
@@ -301,6 +318,8 @@ while (<IN>) {
             }
         } elsif (/^=patterns/) {
             $patterns = 1;
+        } elsif (/^=color_per_datum/) {
+            $color_per_datum = 1;
         } elsif (/^colors=(.*)/) {
             $custom_colors = 1;
             @custom_color = split(',', $1);
@@ -317,6 +336,10 @@ while (<IN>) {
             $base1 = 1;
         } elsif (/^=invert/) {
             $invert = 1;
+        } elsif (/^datascale=(.*)/) {
+            $datascale = $1;
+        } elsif (/^datasub=(.*)/) {
+            $datasub = $1;
         } elsif (/^=percent/) {
             $percent = 1;
         } elsif (/^=sortbmarks/) {
@@ -360,6 +383,8 @@ while (<IN>) {
             $gridx = "xtics";
         } elsif (/^=nogridy/) {
             $gridy = "noytics";
+        } elsif (/^=nolegend/) {
+            $use_legend = 0;
         } elsif (/^legendx=(\d+)/) {
             $legendx = $1;
         } elsif (/^legendy=(\d+)/) {
@@ -379,11 +404,23 @@ while (<IN>) {
             $font_size = $1;
         } elsif (/^bbfudge=(.+)/) {
             $bbfudge = $1;
+        } elsif (/^=yerrorbars/) {
+            $table = 0;
+            $yerrorbars = 1;
+            if (/^=yerrorbars(.)/) {
+                $yerrorbars_splitby = $1;
+            } else {
+                $yerrorbars_splitby = ' ';
+            }
         } else {
             die "Unknown command $_\n";
         }
         next;
     }
+
+    # compatibility checks
+    die "Graphs of type stacked or stackcluster do not suport yerrorbars"
+        if ($yerrorbars  && ($stacked || $stackcluster));
 
     # this line must have data on it!
     
@@ -424,7 +461,50 @@ while (<IN>) {
                 $val += $1;
             }
             if ($val ne '') {
-                $entry{$groupset,$bmark,$dataset} = "$val\n";
+                $entry{$groupset,$bmark,$dataset} = "$val";
+            } # else, leave undefined
+        }
+        goto nextiter;
+    }
+
+    if ($yerrorbars) {
+        # yerrorbars has to look like this, separated by $yerrorbars_splitby (default ' '):
+        # <bmark1> <dataset1> <dataset2> <dataset3> ...
+        # <bmark2> <dataset1> <dataset2> <dataset3> ...
+        # ...
+
+        # perl split has a special case for literal ' ' to collapse adjacent
+        # spaces
+        if ($yerrorbars_splitby eq ' ') {
+            @yerrorbars_entry = split(' ', $_);
+        } else {
+            @yerrorbars_entry = split($yerrorbars_splitby, $_);
+        }
+        if ($#yerrorbars_entry != $plotcount) { # not +1 since bmark
+            print STDERR "WARNING: yerrorbars format error on line $_: found $#yerrorbars_entry entries, expecting $plotcount entries\n";
+        }
+        # remove leading and trailing spaces, and escape quotes
+        $yerrorbars_entry[0] =~ s/^\s*//;
+        $yerrorbars_entry[0] =~ s/\s*$//;
+        $yerrorbars_entry[0] =~ s/\"/\\\"/g;
+        $bmark = $yerrorbars_entry[0];
+        for ($i=1; $i<=$#yerrorbars_entry; $i++) {
+            $yerrorbars_entry[$i] =~ s/^\s*//;
+            $yerrorbars_entry[$i] =~ s/\s*$//;
+            if ($stacked || $stackcluster) {
+                # reverse order of datasets
+                $dataset = $stackcount-1 - ($i-1);
+            } else {
+                $dataset = $i-1;
+            }
+            $val = get_val($yerrorbars_entry[$i], $dataset);
+            if (($stacked || $stackcluster) && $dataset < $stackcount-1) {
+                # need to add prev bar to stick above
+                $yerror_entry{$groupset,$bmark,$dataset+1} =~ /([-\d\.eE]+)/;
+                $val += $1;
+            }
+            if ($val ne '') {
+                $yerror_entry{$groupset,$bmark,$dataset} = "$val";
             } # else, leave undefined
         }
         goto nextiter;
@@ -467,7 +547,7 @@ while (<IN>) {
         $entry{$groupset,$bmark,$dataset+1} =~ /([-\d\.]+)/;
         $val += $1;
     }
-    $entry{$groupset,$bmark,$dataset} = "$val\n";
+    $entry{$groupset,$bmark,$dataset} = "$val";
 
   nextiter:
     if (!defined($names{$bmark})) {
@@ -500,7 +580,7 @@ if (!$stacked) {
     } elsif ($clustercount == 7) {
         $boxwidth=0.11;
     } elsif ($clustercount == 8) {
-        $boxwidth=0.08;
+        $boxwidth=0.09;
     } elsif ($clustercount >= 9) {
         $boxwidth=0.75/$clustercount;
     }
@@ -665,53 +745,62 @@ for ($i=0; $i<=$#figcolor; $i++) {
 }
 chomp($figcolorins);
 
+$colorcount = $plotcount; # re-set for color_per_datum below
 if ($patterns) {
-    for ($i=0; $i<$plotcount; $i++) {
+    $colorcount = $max_patterns if ($color_per_datum);
+    for ($i=0; $i<$colorcount; $i++) {
         # cycle around at max
         $fillstyle[$i] = 41 + ($i % $max_patterns);
         # FIXME: could combine patterns and colors, we don't bother to support that
         $fillcolor[$i] = 7;
     }
 } elsif ($use_colors) {
+    $colorcount = $num_nongrayscale if ($color_per_datum);
     # colors: all solid fill
-    for ($i=0; $i<$plotcount; $i++) {
+    for ($i=0; $i<$colorcount; $i++) {
         $fillstyle[$i]=20;
     }
     if ($custom_colors) {
-        for ($i=0; $i<$plotcount; $i++) {
+        $colorcount = $#custom_color+1 if ($color_per_datum);
+        for ($i=0; $i<$colorcount; $i++) {
             $fillcolor[$i]=$colornm{$custom_color[$i]};
         }
     } else {
         # color schemes that I tested as providing good contrast when
-        # printed on a non-color printer
-        if ($plotcount == 1) {
+        # printed on a non-color printer.
+        if ($yerrorbars && $colorcount >= 5) {
+            # for yerrorbars we avoid using black since the errorbars are black.
+            # a hack where we take the next-highest set and then remove black:
+            $colorcount++;
+        }
+        if ($colorcount == 1) {
             $fillcolor[0]=$fig_light_blue;
-        } elsif ($plotcount == 2) {
+        } elsif ($colorcount == 2) {
             $fillcolor[0]=$fig_med_blue;
             $fillcolor[1]=$fig_yellow;
-        } elsif ($plotcount == 3) {
+        } elsif ($colorcount == 3) {
             $fillcolor[0]=$fig_med_blue;
             $fillcolor[1]=$fig_yellow;
             $fillcolor[2]=$fig_red;
-        } elsif ($plotcount == 4) {
+        } elsif ($colorcount == 4) {
             $fillcolor[0]=$fig_med_blue;
             $fillcolor[1]=$fig_yellow;
             $fillcolor[2]=$fig_dark_green;
             $fillcolor[3]=$fig_red;
-        } elsif ($plotcount == 5) {
+        } elsif ($colorcount == 5) {
             $fillcolor[0]=$fig_black;
             $fillcolor[1]=$fig_yellow;
             $fillcolor[2]=$fig_red;
             $fillcolor[3]=$fig_med_blue;
             $fillcolor[4]=$fig_grey;
-        } elsif ($plotcount == 6) {
+        } elsif ($colorcount == 6) {
             $fillcolor[0]=$fig_black;
             $fillcolor[1]=$fig_dark_green;
             $fillcolor[2]=$fig_yellow;
             $fillcolor[3]=$fig_red;
             $fillcolor[4]=$fig_med_blue;
             $fillcolor[5]=$fig_grey;
-        } elsif ($plotcount == 7) {
+        } elsif ($colorcount == 7) {
             $fillcolor[0]=$fig_black;
             $fillcolor[1]=$fig_dark_green;
             $fillcolor[2]=$fig_yellow;
@@ -719,7 +808,7 @@ if ($patterns) {
             $fillcolor[4]=$fig_dark_blue;
             $fillcolor[5]=$fig_cyan;
             $fillcolor[6]=$fig_grey;
-        } elsif ($plotcount == 8) {
+        } elsif ($colorcount == 8) {
             $fillcolor[0]=$fig_black;
             $fillcolor[1]=$fig_dark_green;
             $fillcolor[2]=$fig_yellow;
@@ -728,7 +817,7 @@ if ($patterns) {
             $fillcolor[5]=$fig_dark_blue;
             $fillcolor[6]=$fig_cyan;
             $fillcolor[7]=$fig_grey;
-        } elsif ($plotcount == 9) {
+        } elsif ($colorcount == 9) {
             $fillcolor[0]=$fig_black;
             $fillcolor[1]=$fig_dark_green;
             $fillcolor[2]=$fig_light_green;
@@ -739,23 +828,41 @@ if ($patterns) {
             $fillcolor[7]=$fig_cyan;
             $fillcolor[8]=$fig_grey;
         } else {
-            for ($i=0; $i<$plotcount; $i++) {
+            for ($i=0; $i<$colorcount; $i++) {
                 # FIXME: set to programmatic spread of custom colors
                 # for now we simply re-use our set of colors
                 $fillcolor[$i]=$basefigcolor + ($i % $num_nongrayscale);
             }
         }
+        if ($yerrorbars) {
+            if ($colorcount >= 5) {
+                # a hack where we take the next-highest set and remove black,
+                # which we assume to be first
+                die "Internal color assumption error"
+                    if ($colorcount == 5 || $fillcolor[0] != $fig_black);
+                $colorcount--;
+                for ($i=0; $i<$colorcount; $i++) {
+                    $fillcolor[$i] = $fillcolor[$i+1];
+                }
+            }
+            # double-check we have no conflicts w/ the black error bars
+            for ($i=0; $i<$colorcount; $i++) {
+                die "Internal color assumption error"
+                    if ($fillcolor[i] == $fig_black);
+            }
+        }
     }
     if ($stacked || $stackcluster) {
         # reverse order for stacked since we think of bottom as "first"
-        for ($i=0; $i<$plotcount; $i++) {
+        for ($i=0; $i<$colorcount; $i++) {
             $tempcolor[$i]=$fillcolor[$i];
         }
-        for ($i=0; $i<$plotcount; $i++) {
-            $fillcolor[$i]=$tempcolor[$plotcount-$i-1];
+        for ($i=0; $i<$colorcount; $i++) {
+            $fillcolor[$i]=$tempcolor[$colorcount-$i-1];
         }
     }
 } else {
+    $colorcount = 10 if ($color_per_datum);
     # b&w fills
     $bwfill[0]=5;
     $bwfill[1]=10;
@@ -768,10 +875,10 @@ if ($patterns) {
     $bwfill[8]=4;
     $bwfill[9]=11;
     $bwfill[10]=6;
-    for ($i=0; $i<$plotcount; $i++) {
+    for ($i=0; $i<$colorcount; $i++) {
         if ($stacked || $stackcluster) {
             # reverse order for stacked since we think of bottom as "first"
-            $fillstyle[$i]=$bwfill[$plotcount-$i-1];
+            $fillstyle[$i]=$bwfill[$colorcount-$i-1];
         } else {
             $fillstyle[$i]=$bwfill[$i];
         }
@@ -855,8 +962,15 @@ for ($g=0; $g<$groupcount; $g++) {
         }
     }
 }
-print GNUPLOT "\n";
 
+if ($yerrorbars) {
+    for ($g=0; $g<$groupcount; $g++) {
+        for ($i=0; $i<$plotcount; $i++) {
+            print GNUPLOT ", '-' notitle with yerrorbars 0";
+        }
+    }
+}
+print GNUPLOT "\n";
 for ($g=0; $g<$groupcount; $g++) {
     for ($i=0; $i<$plotcount; $i++) {
         $line = 1;
@@ -864,7 +978,7 @@ for ($g=0; $g<$groupcount; $g++) {
             # support missing values in some datasets
             if (defined($entry{$g,$b,$i})) {
                 $xval = get_xval($g, $i, $line);
-                print GNUPLOT "$xval, $entry{$g,$b,$i}";
+                print GNUPLOT "$xval, $entry{$g,$b,$i}\n";
                 $line++;
             } else {
                 print STDERR "WARNING: missing value for $b in dataset $i\n";
@@ -879,6 +993,28 @@ for ($g=0; $g<$groupcount; $g++) {
         }
         # an e separates each dataset
         print GNUPLOT "e\n";
+    }
+}
+if ($yerrorbars) {
+    for ($g=0; $g<$groupcount; $g++) {
+        for ($i=0; $i<$plotcount; $i++) {
+            $line = 1; 
+            foreach $b (@sorted) {
+                # support missing values in some datasets
+                if (defined($entry{$g,$b,$i})) {
+                    $xval = get_xval($g, $i, $line);
+                    print GNUPLOT "$xval, $entry{$g,$b,$i}, $yerror_entry{$g,$b,$i}\n";
+                    $line++;
+                } else {
+                    print STDERR "WARNING: missing value for $b in dataset $i\n";
+                    $line++;
+                }
+            }
+            # skip over missing values to put harmean at end
+            $line = $xmax - 1;
+            # an e separates each dataset
+            print GNUPLOT "e\n";
+        }
     }
 }
 
@@ -897,7 +1033,8 @@ if ($output eq "fig") {
 } elsif ($output eq "pdf") {
     $fig2dev = "$fig2dev_path -L pdf -n \"$title\"";
 } elsif ($output eq "png") {
-    $fig2dev = "$fig2dev_path -L png -m 2 | convert -transparent white - - ";
+    $fig2dev = "$fig2dev_path -L png -m 2";
+    $fig2dev .= " | convert -transparent white - - " if ($png_transparent);
 } else {
     die "Error: unknown output type $output\n";
 }
@@ -979,13 +1116,21 @@ $figcolorins|;
             }
             # There are some polylines past the last plot
             if ($set < $plotcount) {
-                s|^2 1 \S+ \S+ (\S+) \1 $plot_depth 0 -1 +([0-9]+).000|2 1 0 1 -1 $fillcolor[$set] $depth[$set] 0 $fillstyle[$set]     0.000|;
+                $color_idx = $color_per_datum ? ($itemcount++ % ($#fillcolor+1)) :
+                    $set;
+                s|^2 1 \S+ \S+ (\S+) \1 $plot_depth 0 -1 +([0-9]+).000|2 1 0 1 -1 $fillcolor[$color_idx] $depth[$set] 0 $fillstyle[$color_idx]     0.000|;
             } elsif (defined($xlate{$_})) {
                 $repeat = $xlate{$_};
+                $color_idx = $color_per_datum ? ($itemcount++ % ($#fillcolor+1)) :
+                    $repeat;
                 # Handle later repeats, like for cluster of stacked
-                s|^2 1 \S+ \S+ (\S+) \1 $plot_depth 0 -1 +([0-9]+).000|2 1 0 1 -1 $fillcolor[$repeat] $depth[$repeat] 0 $fillstyle[$repeat]     0.000|;
+                s|^2 1 \S+ \S+ (\S+) \1 $plot_depth 0 -1 +([0-9]+).000|2 1 0 1 -1 $fillcolor[$color_idx] $depth[$repeat] 0 $fillstyle[$color_idx]     0.000|;
             }
         }
+    }
+
+    if ($yerrorbars) {
+        s|^2 1 (\S+) 1 0 0 $plot_depth 0 -1     4.000 0 (\S+) 0 0 0 2|2 1 $1 1 0 0 10 0 -1     0.000 0 $2 0 0 0 2|;
     }
 
     if ($stackcluster && $grouplabels && $usexlabels) {
@@ -1036,7 +1181,7 @@ $figcolorins|;
 }
 
 # add the legend
-if ($plotcount > 1) {
+if ($use_legend && $plotcount > 1) {
     # center top is around lx=3800 ly=900
     # on right: lx=7100 ly=2300
     if ($legendx == 0) {
@@ -1101,6 +1246,12 @@ sub get_val($, $)
             $harsum[$idx] += 1/$val;
         }
         $harnum[$idx]++;
+    }
+    if ($datasub != 0) {
+        $val -= $datasub;
+    }
+    if ($datascale != 1) {
+        $val *= $datascale;
     }
     if ($percent) {
         $val = ($val - 1) * 100;

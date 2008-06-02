@@ -46,12 +46,9 @@ automatic averaging and other features.
 
 <p>The script is <a href="bargraph.pl">bargraph.pl</a>, released under
 the <a href="gpl.txt">GPL</a>.
-<br><a href="bargraph.pl">Version 4.2</a> was released May 25, 2007, with
-support for gnuplot 4.2.
-(Note: there is a bug in gnuplot 4.2.0 (still there in 4.2.2 as well) where
-scaling via <tt>set size</tt> clips axis tic labels: I have <a
-href="gnuplot-4.2.0-setsize-bugfix.diff">a gnuplot 4.2.0 patch</a> for
-this.)</p>
+<br><a href="bargraph.pl">Version 4.3</a> was released June 1, 2008, with
+new support for error bars.
+</p>
 
 <p>Features:
 <ul>
@@ -68,6 +65,7 @@ without having a separate tool chain step outside the script
 <li>Automatic legend creation
 <li>Automatic sorting, including sorting into SPEC CPU 2000 integer and
 floating point benchmark groups
+<li>Error bar support
 </ul>
 </p>
 
@@ -82,7 +80,7 @@ floating point benchmark groups
 The script's usage message shows the command-line options:
 
 <pre>
-Usage: bargraph.pl [-gnuplot] [-fig] [-pdf] [-png] [-eps] &lt;graphfile&gt;
+Usage: bargraph.pl [-gnuplot] [-fig] [-pdf] [-png [-non-transparent]] [-eps] &lt;graphfile&gt;
 
 File format:
 &lt;graph parameters&gt;
@@ -113,7 +111,8 @@ to non-vector formats</a> for notes on avoiding aliasing and other problems
 when creating images, and for some Makefile rules.  My script magnifies 2x
 when converting to png to help avoid these problems, but for most uses
 that's not enough and you should follow <a href="#Bitmap">my
-suggestions</a> rather than using -png.
+suggestions</a> rather than using -png.  My default for -png produces a
+transparent background; the -non-transparent option disables that feature.
 </p>
 
 <p>The following sections describe each graph parameter.</p>
@@ -275,6 +274,15 @@ suggestions</a> rather than using -png.
      </pre>     
 </p></li>
 
+<li><p><strong>=yerrorbars</strong><br>
+    Specifies that vertical error bars are to be displayed for each datum.
+    This option is not supported with <a href="#stacked">=stacked</a>
+    or <a href="#stackcluster">=stackcluster</a> graphs.  The error bar
+    data follows this directive, in the same format (including optional
+    non-space delimiter) as <a href="#table">=table</a> (non-table-format
+    error bar data is not supported).
+</p></li>
+
 <li><p><strong>colors=</strong><br>
     The script was tuned with sets of colors designed to have maximum
     contrast when printed on a non-color printer, yet still look good on a
@@ -337,6 +345,11 @@ suggestions</a> rather than using -png.
      dataset counts higher than 22.
 </p></li>
 
+<li><p><strong>=color_per_datum</strong><br>
+     Specifies that a different color should be used for each datum.  Does
+     not work with patterns.  With clusters, the legend is not very useful.
+</p></li>
+
 </ul>
 
 <!--------------------------------------------------------------------------->
@@ -354,10 +367,19 @@ suggestions</a> rather than using -png.
 
 <li><p><strong>=percent</strong><br>
     Each datum is transformed to <tt>(datum - 1) * 100</tt> before graphing.
+    This happens after scaling by base1, datasub, or datascale.
 </p></li>
 
 <li><p><strong>=base1</strong><br>
     Each datum is transformed to <tt>(datum - 1)</tt> before graphing.
+</p></li>
+
+<li><p><strong>datasub=</strong><br>
+    The specified number is subtracted from each datum prior to graphing.
+</p></li>
+
+<li><p><strong>datascale=</strong><br>
+    Each datum is multiplied by the specified number prior to graphing.
 </p></li>
 
 <li><p><strong>=sort</strong><br>
@@ -468,6 +490,10 @@ suggestions</a> rather than using -png.
 
 <li><p><strong>=nogridy</strong><br>
     Requests that y grid lines not be displayed (they are by default).
+</p></li>
+
+<li><p><strong>=nolegend</strong><br>
+    Disables display of the legend.
 </p></li>
 
 <li><p><strong>legendx=</strong><br>
@@ -605,6 +631,12 @@ suggestions</a> rather than using -png.
 </li>
 
 <li>
+<p>A simple bar graph using a separate color per datum.<br>
+<a href="one_dataset_colors.perf">[source file]</a></p>
+<img src="one_dataset_colors.png">
+</li>
+
+<li>
 <p>A stacked all-100% bar graph<br>
 <a href="stacked_100.perf">[source file]</a></p>
 <img src="stacked_100.png">
@@ -620,6 +652,12 @@ suggestions</a> rather than using -png.
 <p>A cluster-of-stacked-bars graph.<br>
 <a href="cluster_stacked.perf">[source file]</a></p>
 <img src="cluster_stacked.png">
+</li>
+
+<li>
+<p>A bar graph with error bars.<br>
+<a href="errorbar.perf">[source file]</a></p>
+<img src="errorbar.png">
 </li>
 
 <li>
@@ -774,6 +812,10 @@ fill support.
 <!--------------------------------------------------------------------------->
 
 <dl>
+
+<dt><strong>4.3 -- June 1, 2008</strong><dd><p>Added error bar support
+(from Mohammad Ansari), along with miscellaneous options (-non-transparent
+option, =color_per_datum, datascale=, datasub=, =nolegend).</p></dt>
 
 <dt><strong>4.2 -- May 25, 2007</strong><dd><p>Added support for gnuplot
 4.2 (the default fig styles changed).</p></dt>

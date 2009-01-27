@@ -97,8 +97,9 @@ the data in the file. Comments can be included in a graph file following the
 <tt>#</tt> character.</p>
 
 <p>
-The script's output, by default, is encapsulated postscript (.eps).  It
-first produces data to send to gnuplot, which can be seen by specifying
+The script's output, by default, is encapsulated postscript (.eps), which
+is sent to stdout.  It first produces data to send to gnuplot, which can be
+seen by specifying
 <tt>-gnuplot</tt>.  Next, the script takes the resulting fig output from
 gnuplot and post-processes it to fill in the bars.  The final fig data can
 also be selected via <tt>-fig</tt>.  This data is then sent to fig2dev to

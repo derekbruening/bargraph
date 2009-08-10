@@ -71,8 +71,8 @@ Graph parameter types:
 # Changes in version 4.4, released August 10, 2009:
 #    * added rotateby= option
 #    * added xticshift= option
-#    * added support for gnuplot 4.3
-#    * added ylabelshift= option
+#    * added support for gnuplot 4.3 (from Dima Kogan)
+#    * added ylabelshift= option (from Ricardo Nabinger Sanchez)
 #    * added =stackabs option
 # Changes in version 4.3, released June 1, 2008:
 #    * added errorbar support (from Mohammad Ansari)

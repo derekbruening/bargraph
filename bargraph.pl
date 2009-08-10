@@ -64,7 +64,9 @@ Graph parameter types:
 # For complete documentation see
 #   http://www.burningcutlery.com/derek/bargraph/
 
-# This is version 4.3.
+# This is what will become version 4.4.
+# Changes in version 4.4, not yet released:
+#    * added =stackabs option
 # Changes in version 4.3, released June 1, 2008:
 #    * added errorbar support (from Mohammad Ansari)
 #    * added support for multiple colors in a single dataset
@@ -186,6 +188,7 @@ open(IN, "< $graph") || die "Couldn't open $graph";
 
 # support for clusters and stacked
 $stacked = 0;
+$stacked_absolute = 0;
 $stackcount = 1;
 $clustercount = 1;
 $plotcount = 1; # multi datasets to cycle colors through
@@ -414,6 +417,8 @@ while (<IN>) {
             } else {
                 $yerrorbars_splitby = ' ';
             }
+        } elsif (/^=stackabs/) {
+            $stacked_absolute = 1;
         } else {
             die "Unknown command $_\n";
         }
@@ -457,7 +462,8 @@ while (<IN>) {
                 $dataset = $i-1;
             }
             $val = get_val($table_entry[$i], $dataset);
-            if (($stacked || $stackcluster) && $dataset < $stackcount-1) {
+            if (($stacked || $stackcluster) && $dataset < $stackcount-1 &&
+                !$stacked_absolute) {
                 # need to add prev bar to stick above
                 $entry{$groupset,$bmark,$dataset+1} =~ /([-\d\.eE]+)/;
                 $val += $1;
@@ -500,7 +506,8 @@ while (<IN>) {
                 $dataset = $i-1;
             }
             $val = get_val($yerrorbars_entry[$i], $dataset);
-            if (($stacked || $stackcluster) && $dataset < $stackcount-1) {
+            if (($stacked || $stackcluster) && $dataset < $stackcount-1 &&
+                !$stacked_absolute) {
                 # need to add prev bar to stick above
                 $yerror_entry{$groupset,$bmark,$dataset+1} =~ /([-\d\.eE]+)/;
                 $val += $1;
@@ -543,7 +550,8 @@ while (<IN>) {
     }
 
     $val = get_val($val_string, $dataset);
-    if (($stacked || $stackcluster) && $dataset < $stackcount-1) {
+    if (($stacked || $stackcluster) && $dataset < $stackcount-1 &&
+        !$stacked_absolute) {
         # need to add prev bar to stick above
         # remember that we're walking backward
         $entry{$groupset,$bmark,$dataset+1} =~ /([-\d\.]+)/;
@@ -615,13 +623,16 @@ if ($use_mean) {
                 if ($harsum[$i] == 0);
             $harmean[$i] = $harnum[$i] / $harsum[$i];
         }
+        if ($datascale != 1) {
+            $harmean[$i] *= $datascale;
+        }
         if ($percent) {
             $harmean[$i] = ($harmean[$i] - 1) * 100;
         } elsif ($base1) {
             $harmean[$i] = ($harmean[$i] - 1);
         }
     }
-    if ($stacked || $stackcluster) {
+    if (($stacked || $stackcluster) && !$stacked_absolute) {
         for ($i=$plotcount-2; $i>=0; $i--) {
             # need to add prev bar to stick above
             # since reversed, prev is +1

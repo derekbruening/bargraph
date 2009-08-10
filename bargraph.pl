@@ -7,8 +7,10 @@
 # http://www.burningcutlery.com/derek/bargraph/
 # http://code.google.com/p/bargraphgen/
 #
-# Error bar code contributed by Mohammad Ansari.
-# ylabelshift contributed by Ricardo Nabinger Sanchez.
+# Contributions:
+# * gnuplot 4.3 fixes and axislabel_tilt contributed by Dima Kogan
+# * ylabelshift contributed by Ricardo Nabinger Sanchez.
+# * Error bar code contributed by Mohammad Ansari.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -940,8 +942,8 @@ set terminal fig color depth %d
 ", $title, $plot_depth;
 
 printf GNUPLOT "
-set xlabel '%s' %s
-set ylabel '%s' %s
+set xlabel '%s' offset %s
+set ylabel '%s' offset %s
 set xtics %s (%s)
 set format y \"%s\"
 ", $xlabel, $xlabelshift, $ylabel, $ylabelshift, $xticsopts, $xtics, $yformat;
@@ -976,7 +978,7 @@ for ($g=0; $g<$groupcount; $g++) {
         if ($patterns) {
             printf GNUPLOT "'-' notitle with boxes fs pattern %d", ($i % $max_patterns);
         } else {
-            printf GNUPLOT "'-' notitle with boxes %d", $i+3;
+            printf GNUPLOT "'-' notitle with boxes ls %d", $i+3;
         }
     }
 }
@@ -984,7 +986,7 @@ for ($g=0; $g<$groupcount; $g++) {
 if ($yerrorbars) {
     for ($g=0; $g<$groupcount; $g++) {
         for ($i=0; $i<$plotcount; $i++) {
-            print GNUPLOT ", '-' notitle with yerrorbars 0";
+            print GNUPLOT ", '-' notitle with yerrorbars ls 0";
         }
     }
 }

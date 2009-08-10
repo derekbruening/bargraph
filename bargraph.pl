@@ -8,6 +8,7 @@
 # http://code.google.com/p/bargraphgen/
 #
 # Error bar code contributed by Mohammad Ansari.
+# ylabelshift contributed by Ricardo Nabinger Sanchez.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -66,6 +67,7 @@ Graph parameter types:
 
 # This is what will become version 4.4.
 # Changes in version 4.4, not yet released:
+#    * added ylabelshift= option
 #    * added =stackabs option
 # Changes in version 4.3, released June 1, 2008:
 #    * added errorbar support (from Mohammad Ansari)
@@ -211,6 +213,7 @@ $usexlabels = 1;
 # when rotated, need to shift xlabel down, -1 is reasonable:
 $xlabelshift = "0,-1";
 $xticsopts = "rotate";
+$ylabelshift = "0,0";
 
 $sort = 0;
 # sort into SPEC CPU 2000 and JVM98 groups: first, SPECFP, then SPECINT, then JVM
@@ -372,6 +375,8 @@ while (<IN>) {
             $xlabelshift = "0,-1";
         } elsif (/^xlabelshift=(.+)/) {
             $xlabelshift = $1;
+        } elsif (/^ylabelshift=(.+)/) {
+            $ylabelshift = $1;
         } elsif (/^title=(.*)$/) {
             $title = $1;
         } elsif (/^=noxlabels/) {
@@ -936,10 +941,10 @@ set terminal fig color depth %d
 
 printf GNUPLOT "
 set xlabel '%s' %s
-set ylabel '%s'
+set ylabel '%s' %s
 set xtics %s (%s)
 set format y \"%s\"
-", $xlabel, $xlabelshift, $ylabel, $xticsopts, $xtics, $yformat;
+", $xlabel, $xlabelshift, $ylabel, $ylabelshift, $xticsopts, $xtics, $yformat;
 
 printf GNUPLOT "
 set boxwidth %s

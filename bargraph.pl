@@ -8,7 +8,7 @@
 # http://code.google.com/p/bargraphgen/
 #
 # Contributions:
-# * gnuplot 4.3 fixes and axislabel_tilt contributed by Dima Kogan
+# * gnuplot 4.3 fixes contributed by Dima Kogan
 # * ylabelshift contributed by Ricardo Nabinger Sanchez.
 # * Error bar code contributed by Mohammad Ansari.
 #
@@ -67,8 +67,11 @@ Graph parameter types:
 # For complete documentation see
 #   http://www.burningcutlery.com/derek/bargraph/
 
-# This is what will become version 4.4.
-# Changes in version 4.4, not yet released:
+# This is version 4.4.
+# Changes in version 4.4, released August 10, 2009:
+#    * added rotateby= option
+#    * added xticshift= option
+#    * added support for gnuplot 4.3
 #    * added ylabelshift= option
 #    * added =stackabs option
 # Changes in version 4.3, released June 1, 2008:
@@ -211,10 +214,11 @@ $xlabel = "";
 $ylabel = "";
 $usexlabels = 1;
 
-# default is to rotate x labels
-# when rotated, need to shift xlabel down, -1 is reasonable:
+# default is to rotate x tic labels by 90 degrees
+# when tic labels are rotated, need to shift axis label down. -1 is reasonable:
 $xlabelshift = "0,-1";
 $xticsopts = "rotate";
+$xticshift = "0,0";
 $ylabelshift = "0,0";
 
 $sort = 0;
@@ -379,6 +383,10 @@ while (<IN>) {
             $xlabelshift = $1;
         } elsif (/^ylabelshift=(.+)/) {
             $ylabelshift = $1;
+        } elsif (/^xticshift=(.+)/) {
+            $xticsopts .= " offset $1";
+        } elsif (/^rotateby=(.+)/) {
+            $xticsopts = "rotate by $1";
         } elsif (/^title=(.*)$/) {
             $title = $1;
         } elsif (/^=noxlabels/) {
@@ -1171,7 +1179,7 @@ $figcolorins|;
     }
 
     # Custom fonts
-    if (/^(4\s+\d+\s+[-\d]+\s+\d+\s+[-\d]+)\s+[-\d]+\s+([\d\.]+)\s+([\d\.]+)\s+(\d+)\s+([\d\.]+)\s+([\d\.]+)(\s+[-\d\.]+\s+[-\d\.]+) (.*)\\001/) {
+    if (/^(4\s+\d+\s+[-\d]+\s+\d+\s+[-\d]+)\s+[-\d]+\s+([\d\.]+)\s+([-\d\.]+)\s+(\d+)\s+([\d\.]+)\s+([\d\.]+)(\s+[-\d\.]+\s+[-\d\.]+) (.*)\\001/) {
         $prefix = $1;
         $oldsz = $2;
         $orient = $3;

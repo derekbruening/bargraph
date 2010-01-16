@@ -69,6 +69,8 @@ Graph parameter types:
 
 # This is version 4.5 pre-release.
 # Changes so far in version 4.5, yet to be released:
+#    * added =legendinbg option (legend in fg is new default)
+#    * added =barsinbg option (from Manolis Lourakis)
 #    * added horizline= option (issue #2)
 #    * added grouprotateby= option (issue #1)
 # Changes in version 4.4, released August 10, 2009:
@@ -271,7 +273,8 @@ $color_per_datum = 0;
 # fig depth: leave enough room for many datasets
 # (for stacked bars we subtract 2 for each)
 # but max gnuplot terminal depth for fig is 99!
-$legend_depth = 100;
+# fig depth might change later via =barsinbg
+$legend_depth = 0; # 100 for =legendinbg
 $plot_depth = 98;
 
 $add_commas = 1;
@@ -283,6 +286,9 @@ $bbfudge = 1.0;
 
 # yerrorbar support
 $yerrorbars = 0;
+
+# are bars in the foreground (default) or background of plot?
+$barsinbg = 0;
 
 while (<IN>) {
     next if (/^\#/ || /^\s*$/);
@@ -442,6 +448,10 @@ while (<IN>) {
             $stacked_absolute = 1;
         } elsif (/^horizline=(.+)/) {
             $lineat .= "f(x)=$1,f(x) notitle lt -1,"; # put black line at $1
+        } elsif (/^=barsinbg/) {
+            $barsinbg = 1;
+        } elsif (/^=legendinbg/) {
+            $legend_depth = 100;
         } else {
             die "Unknown command $_\n";
         }
@@ -929,6 +939,10 @@ $start_depth = ($plot_depth - 2 - 2*($plotcount-1)) < 0 ?
     2*$plotcount : $plot_depth;
 for ($i=0; $i<$plotcount; $i++) {
     $depth[$i] = $start_depth - 2 - 2*$i;
+}
+if ($barsinbg) {
+    $plot_depth = $start_depth - 2 - 2*$plotcount;
+    $plot_depth = 0 if ($plot_depth < 0);
 }
 
 ###########################################################################

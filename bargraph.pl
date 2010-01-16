@@ -69,6 +69,7 @@ Graph parameter types:
 
 # This is version 4.5 pre-release.
 # Changes so far in version 4.5, yet to be released:
+#    * added horizline= option (issue #2)
 #    * added grouprotateby= option (issue #1)
 # Changes in version 4.4, released August 10, 2009:
 #    * added rotateby= option
@@ -439,6 +440,8 @@ while (<IN>) {
             }
         } elsif (/^=stackabs/) {
             $stacked_absolute = 1;
+        } elsif (/^horizline=(.+)/) {
+            $lineat .= "f(x)=$1,f(x) notitle lt -1,"; # put black line at $1
         } else {
             die "Unknown command $_\n";
         }
@@ -738,7 +741,7 @@ if ($calc_min) {
             $min = int($min - 1);
         }
         $ymin = $min;
-        $lineat = "f(x)=0,f(x) notitle,"; # put line at 0
+        $lineat .= "f(x)=0,f(x) notitle lt -1,"; # put black line at 0
     } # otherwise leave ymin at 0
 } # otherwise leave ymin at user-specified value
 

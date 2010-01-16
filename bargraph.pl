@@ -67,7 +67,9 @@ Graph parameter types:
 # For complete documentation see
 #   http://www.burningcutlery.com/derek/bargraph/
 
-# This is version 4.4.
+# This is version 4.5 pre-release.
+# Changes so far in version 4.5, yet to be released:
+#    * added grouprotateby= option (issue #1)
 # Changes in version 4.4, released August 10, 2009:
 #    * added rotateby= option
 #    * added xticshift= option
@@ -208,6 +210,7 @@ $stackcluster = 0;
 $groupcount = 1;
 $grouplabels = 0;
 $groupset = 0;
+$grouplabel_rotateby = 0;
 
 $title = "";
 $xlabel = "";
@@ -387,6 +390,8 @@ while (<IN>) {
             $xticsopts .= " offset $1";
         } elsif (/^rotateby=(.+)/) {
             $xticsopts = "rotate by $1";
+        } elsif (/^grouprotateby=(.+)/) {
+            $grouplabel_rotateby = $1;
         } elsif (/^title=(.*)$/) {
             $title = $1;
         } elsif (/^=noxlabels/) {
@@ -679,8 +684,8 @@ for ($g=0; $g<$groupcount; $g++) {
         $item++;
     }
     if ($stackcluster && $grouplabels && $usexlabels) {
-        $label = sprintf("set label \"%s\" at %d,0 center",
-                         $groupname[$g], $g+1);
+        $label = sprintf("set label \"%s\" at %d,0 center rotate by %d",
+                         $groupname[$g], $g+1, $grouplabel_rotateby);
         $extra_gnuplot_cmds .= "$label\n";
     }
 }

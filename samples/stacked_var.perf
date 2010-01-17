@@ -3,6 +3,8 @@
 # avoiding gray and black for better looking on-screen graph
 # (not planning on printing this one)
 colors=med_blue,black,yellow,red,cyan,dark_green
+=nolegoutline
+legendfill=
 legendx=5000
 legendy=500
 =table

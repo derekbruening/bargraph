@@ -9,6 +9,8 @@ xlabel=Benchmark
 ylabel=Beyond native
 # gap and vortex stick up too much so we cut off and label
 max=160
+=nolegoutline
+legendfill=
 legendy=1
 extraops=set label "236%" at 4.8,168 right font "Times,10"
 extraops=set label "445%" at 10.8,168 right font "Times,10"

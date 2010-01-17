@@ -8,6 +8,8 @@
 # http://code.google.com/p/bargraphgen/
 #
 # Contributions:
+# * legendfill= code inspired by Kacper Wysocki's code
+# * =barsinbg option contributed by Manolis Lourakis
 # * gnuplot 4.3 fixes contributed by Dima Kogan
 # * ylabelshift contributed by Ricardo Nabinger Sanchez.
 # * Error bar code contributed by Mohammad Ansari.
@@ -69,6 +71,12 @@ Graph parameter types:
 
 # This is version 4.5 pre-release.
 # Changes so far in version 4.5, yet to be released:
+#    * changed legends to have a white background and border outline
+#      by default, with legendfill= option (inspired by Kacper
+#      Wysocki's code) to control the background fill color (and
+#      whether there is a fill) and =nolegoutline to turn off the
+#      outline
+#    * the legend bounding box is now much more accurately calculated
 #    * added =legendinbg option (legend in fg is new default)
 #    * added =barsinbg option (from Manolis Lourakis)
 #    * added horizline= option (issue #2)
@@ -219,6 +227,7 @@ $title = "";
 $xlabel = "";
 $ylabel = "";
 $usexlabels = 1;
+# xlabel rotation seems to not be supported by gnuplot
 
 # default is to rotate x tic labels by 90 degrees
 # when tic labels are rotated, need to shift axis label down. -1 is reasonable:
@@ -261,6 +270,8 @@ $extra_gnuplot_cmds = "";
 $use_legend = 1;
 $legendx = 0;
 $legendy = 0;
+$legend_fill = 'white';
+$legend_outline = 1;
 
 # use patterns instead of solid fills?
 $patterns = 0;
@@ -421,6 +432,10 @@ while (<IN>) {
             $legendx = $1;
         } elsif (/^legendy=(\d+)/) {
             $legendy = $1;
+        } elsif (/^legendfill=(.*)/) {
+            $legend_fill = $1;
+        } elsif (/^=nolegoutline/) {
+            $legend_outline = 0;
         } elsif (/^extraops=(.*)/) {
             $extra_gnuplot_cmds .= "$1\n";
         } elsif (/^=nocommas/) {
@@ -758,8 +773,33 @@ if ($calc_min) {
 ###########################################################################
 ###########################################################################
 
+# add dummy labels so we can extract the bounds of the legend text
+# from gnuplot's text extent calculations.
+# use a prefix so we can identify, process, and remove these.
+# to be really thorough we should check that no user-specified string
+# matches the prefix but too unlikely.
+my $dummy_prefix = "BARGRAPH_TEMP_";
+my $legend_text_width = 0;
+my $legend_text_height = 0;
+my $legend_prefix_width = 0;
+# base to subtract prefix itself
+$extra_gnuplot_cmds .= "set label \"$dummy_prefix\" at 0,0\n";
+for ($i=0; $i<$plotcount; $i++) {
+    # no need to reverse labels: order doesn't matter
+    $label = sprintf("set label \"%s%s\" at %d,0",
+                     $dummy_prefix, $legend[$i], $i);
+    $extra_gnuplot_cmds .= "$label\n";
+}
+
+###########################################################################
+###########################################################################
+
 $use_colors=1;
 
+# some default fig colors
+$colornm{'blue'}=1;
+$colornm{'green'}=2;
+$colornm{'white'}=7;
 # custom colors are from 32 onward, we insert them into the fig file
 # the order here is the order for 9+ datasets
 $basefigcolor=32;
@@ -1183,6 +1223,19 @@ $figcolorins|;
         s|^2 1 (\S+) 1 0 0 $plot_depth 0 -1     4.000 0 (\S+) 0 0 0 2|2 1 $1 1 0 0 10 0 -1     0.000 0 $2 0 0 0 2|;
     }
 
+    # Process and remove dummy strings to determine legend text bounds
+    if (/^4(\s+[-\d\.]+){8}\s+([\d\.]+)\s+([\d\.]+)\s+\d+\s+\d+\s+$dummy_prefix(.*)$/) {
+        my $boundy = $2;
+        my $boundx = $3;
+        if ($4 =~ /^\\001/) {
+            $legend_prefix_width = $boundx;
+        } else {
+            $legend_text_height = $boundy if ($boundy > $legend_text_height);        
+            $legend_text_width = $boundx if ($boundx > $legend_text_width);        
+        }
+        s/^.*$//;
+    }
+
     if ($stackcluster && $grouplabels && $usexlabels) {
         if (/^4\s+.*\s+(\d+)\s+$xlabel\\001/) {
             $grouplabel_y = $1;
@@ -1246,6 +1299,7 @@ if ($use_legend && $plotcount > 1) {
     }
       
     for ($i=0; $i<$plotcount; $i++) {
+        # this 157 should really be derived from $legend_text_height
         $dy=$i*157;
         printf FIG2DEV
 "2 1 0 1 -1 $fillcolor[$i] $legend_depth 0 $fillstyle[$i] 0.000 0 0 0 0 0 5
@@ -1253,6 +1307,8 @@ if ($use_legend && $plotcount > 1) {
 ",  $lx, $ly+200+$dy, $lx, $ly+84+$dy, $lx+121, $ly+84+$dy,
     $lx+121, $ly+200+$dy, $lx, $ly+200+$dy;
     }
+    my $maxlen = 0;
+    $legend_text_width -= $legend_prefix_width;
     for ($i=0; $i<$plotcount; $i++) {
         # legend was never reversed, reverse it here
         if ($stacked || $stackcluster) {
@@ -1261,14 +1317,37 @@ if ($use_legend && $plotcount > 1) {
             $legidx = $i;
         }
         # 9-point so legend not so big
-        # estimate text bounds (important if legend on right to get bounding box)
-        # use width*70, and assume full height 135 (see fig notes above)
+        # bounds are important if legend on right to get bounding box
+        # for simplicity we give each line the bounds of longest line
         $leglen = length $legend[$legidx];
+        $maxlen = $leglen if ($leglen > $maxlen);
         printf FIG2DEV
 "4 0 0 %d 0 %d %d 0.0000 4 %d %d %d %d %s\\001
 ", $legend_depth, $font_face, $font_size - 1,
-135 + &font_bb_diff_y(9), $leglen * (70 + &font_bb_diff_x(9)),
+$legend_text_height + &font_bb_diff_y(11),
+$legend_text_width + $leglen*&font_bb_diff_x(11),
 $lx+225, $ly+186+157*$i, $legend[$legidx];
+    }
+    if ($legend_fill ne '' || $legend_outline) {
+        # background fill for legend box
+        my $fill_color;
+        if (defined($colornm{$legend_fill})) {
+            $fill_color = $colornm{$legend_fill};
+        } else {
+            print STDERR "WARNING: unknown color $legend_fill\n";
+            $fill_color = $colornm{'white'};
+        }
+        my $fill_style = ($legend_fill eq '') ? 0 : 20;
+        my $border = 50;
+        my $x1 = $lx - $border;
+        my $x2 = $lx + 225 + $legend_text_width;# + $maxlen*&font_bb_diff_x(11);
+        my $y1 = $ly - $border + 84;
+        my $y2 = $ly + ($plotcount+0.5) * 157 + 10; # seems to need +10
+        printf FIG2DEV
+            "2 2 0 $legend_outline 0 $fill_color %d 0 $fill_style 0.000 0 0 0 0 0 5
+\t %d %d %d %d %d %d %d %d %d %d
+",      $legend_depth + 1, # UNDER legend
+        $x1,$y1, $x2,$y1, $x2,$y2, $x1,$y2, $x1,$y1;
     }
 }
 

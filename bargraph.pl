@@ -78,6 +78,7 @@ Graph parameter types:
 #      outline
 #    * the legend bounding box is now much more accurately calculated
 #    * eliminated =patterns color with recent gnuplots
+#    * added legendfontsz= option
 #    * added =legendinbg option (legend in fg is new default)
 #    * added =barsinbg option (from Manolis Lourakis)
 #    * added horizline= option (issue #2)
@@ -273,6 +274,7 @@ $legendx = 0;
 $legendy = 0;
 $legend_fill = 'white';
 $legend_outline = 1;
+$legend_font_size = 0; # if left at 0 will be $font_size-1
 
 # use patterns instead of solid fills?
 $patterns = 0;
@@ -437,6 +439,8 @@ while (<IN>) {
             $legend_fill = $1;
         } elsif (/^=nolegoutline/) {
             $legend_outline = 0;
+        } elsif (/^legendfontsz=(.+)/) {
+            $legend_font_size = $1;
         } elsif (/^extraops=(.*)/) {
             $extra_gnuplot_cmds .= "$1\n";
         } elsif (/^=nocommas/) {
@@ -780,6 +784,7 @@ if ($calc_min) {
 # to be really thorough we should check that no user-specified string
 # matches the prefix but too unlikely.
 my $dummy_prefix = "BARGRAPH_TEMP_";
+my $legend_old_fontsz = 0;
 my $legend_text_width = 0;
 my $legend_text_height = 0;
 my $legend_prefix_width = 0;
@@ -1228,10 +1233,11 @@ $figcolorins|;
     }
 
     # Process and remove dummy strings to determine legend text bounds
-    if (/^4(\s+[-\d\.]+){8}\s+([\d\.]+)\s+([\d\.]+)\s+\d+\s+\d+\s+$dummy_prefix(.*)$/) {
-        my $boundy = $2;
-        my $boundx = $3;
-        if ($4 =~ /^\\001/) {
+    if (/^4(\s+[-\d\.]+){5}\s+([\d\.]+)(\s+[-\d\.]+){2}\s+([\d\.]+)\s+([\d\.]+)\s+\d+\s+\d+\s+$dummy_prefix(.*)$/) {
+        $legend_old_fontsz = $2;
+        my $boundy = $4;
+        my $boundx = $5;
+        if ($6 =~ /^\\001/) {
             $legend_prefix_width = $boundx;
         } else {
             $legend_text_height = $boundy if ($boundy > $legend_text_height);        
@@ -1247,7 +1253,7 @@ $figcolorins|;
                 s/^.*$//; # remove
             } else {
                 # HACK to push below
-                $newy = $grouplabel_y + 160 + &font_bb_diff_y($font_size-1);
+                $newy = $grouplabel_y + 160 + &font_bb_diff_y($font_size-1, $font_size);
                 s/(\s+)\d+(\s+$xlabel\\001)/\1$newy\2/;
             }
         }
@@ -1267,8 +1273,8 @@ $figcolorins|;
         $szx = $6;
         $text = $8; # $7 is position
         $textlen = length($text);
-        $newy = $szy + &font_bb_diff_y($oldsz);
-        $newx = $szx + $textlen * &font_bb_diff_x($oldsz);
+        $newy = $szy + &font_bb_diff_y($oldsz, $font_size);
+        $newx = $szx + $textlen * &font_bb_diff_x($oldsz, $font_size);
         s|^$prefix\s+[-\d]+\s+$oldsz\s+$orient\s+$flags\s+$szy\s+$szx|$prefix $font_face $font_size $orient $flags $newy $newx|;
     } elsif (/^4/) {
         print STDERR "WARNING: unknown font element $_";
@@ -1313,6 +1319,8 @@ if ($use_legend && $plotcount > 1) {
     }
     my $maxlen = 0;
     $legend_text_width -= $legend_prefix_width;
+    # default is one smaller than main font so legend not so big
+    $legend_font_size = $font_size - 1 if ($legend_font_size == 0);
     for ($i=0; $i<$plotcount; $i++) {
         # legend was never reversed, reverse it here
         if ($stacked || $stackcluster) {
@@ -1320,16 +1328,15 @@ if ($use_legend && $plotcount > 1) {
         } else {
             $legidx = $i;
         }
-        # 9-point so legend not so big
         # bounds are important if legend on right to get bounding box
         # for simplicity we give each line the bounds of longest line
         $leglen = length $legend[$legidx];
         $maxlen = $leglen if ($leglen > $maxlen);
         printf FIG2DEV
 "4 0 0 %d 0 %d %d 0.0000 4 %d %d %d %d %s\\001
-", $legend_depth, $font_face, $font_size - 1,
-$legend_text_height + &font_bb_diff_y(11),
-$legend_text_width + $leglen*&font_bb_diff_x(11),
+", $legend_depth, $font_face, $legend_font_size,
+$legend_text_height + &font_bb_diff_y($legend_old_fontsz, $legend_font_size),
+$legend_text_width + $leglen*&font_bb_diff_x($legend_old_fontsz, $legend_font_size),
 $lx+225, $ly+186+157*$i, $legend[$legidx];
     }
     if ($legend_fill ne '' || $legend_outline) {
@@ -1344,7 +1351,8 @@ $lx+225, $ly+186+157*$i, $legend[$legidx];
         my $fill_style = ($legend_fill eq '') ? -1 : 20;
         my $border = 50;
         my $x1 = $lx - $border;
-        my $x2 = $lx + 225 + $legend_text_width + $maxlen*&font_bb_diff_x(11) + $border;
+        my $x2 = $lx + 225 + $border + $legend_text_width +
+            $maxlen*&font_bb_diff_x($legend_old_fontsz, $legend_font_size);
         my $y1 = $ly - $border + 84;
         my $y2 = $ly + ($plotcount+0.5) * 157 + 10; # seems to need +10
         printf FIG2DEV
@@ -1440,16 +1448,16 @@ sub bmark_group($)
     return 4; # put unknowns at end
 }
 
-sub font_bb_diff_y($)
+sub font_bb_diff_y($,$)
 {
-    my ($oldsz) = @_;
+    my ($oldsz, $newsz) = @_;
     # This is an inadequate hack: font bounding boxes vary
     # by 15 per 2-point font size change for smaller chars, but up
     # to 30 per 2-point font size for larger chars.  We try to use a
     # single value here for all chars.  Overestimating is better than under.
     # And of course any error accumulates over larger sizes.
     # The real way is to call XTextExtents.
-    $diff = ($font_size - $oldsz)*15*$bbfudge;
+    $diff = ($newsz - $oldsz)*15*$bbfudge;
     if ($font_face >= $fig_font{'Helvetica'} &&
         $font_face <= $fig_font{'Helvetica Narrow Bold Oblique'}) {
         $diff += 15*$bbfudge; # extra height for Helvetica
@@ -1457,16 +1465,17 @@ sub font_bb_diff_y($)
     return &ceil($diff);
 }
 
-sub font_bb_diff_x($)
+sub font_bb_diff_x($,$)
 {
-    my ($oldsz) = @_;
+    my ($oldsz, $newsz) = @_;
     # This is an inadequate hack: font bounding boxes vary
     # by 15 per 2-point font size change for smaller chars, but up
     # to 30 per 2-point font size for larger chars.  We try to use a
     # single value here for all chars.  Overestimating is better than under.
     # And of course any error accumulates over larger sizes.
     # The real way is to call XTextExtents.
-    return &ceil(($font_size - $oldsz)*10*$bbfudge);
+    my $scale = ($newsz < 8) ? 9 : 10;
+    return &ceil(($newsz - $oldsz)*$scale*$bbfudge);
 }
 
 sub ceil {

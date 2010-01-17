@@ -77,6 +77,7 @@ Graph parameter types:
 #      whether there is a fill) and =nolegoutline to turn off the
 #      outline
 #    * the legend bounding box is now much more accurately calculated
+#    * eliminated =patterns color with recent gnuplots
 #    * added =legendinbg option (legend in fg is new default)
 #    * added =barsinbg option (from Manolis Lourakis)
 #    * added horizline= option (issue #2)
@@ -838,7 +839,7 @@ if ($patterns) {
         # cycle around at max
         $fillstyle[$i] = 41 + ($i % $max_patterns);
         # FIXME: could combine patterns and colors, we don't bother to support that
-        $fillcolor[$i] = 7;
+        $fillcolor[$i] = 7; # white
     }
 } elsif ($use_colors) {
     $colorcount = $num_nongrayscale if ($color_per_datum);
@@ -1046,7 +1047,10 @@ for ($g=0; $g<$groupcount; $g++) {
             printf GNUPLOT ", ";
         }
         if ($patterns) {
-            printf GNUPLOT "'-' notitle with boxes fs pattern %d", ($i % $max_patterns);
+            # newer gnuplot uses colors by default so request black w/ "lt -1"
+            # (xref issue 3)
+            printf GNUPLOT "'-' notitle with boxes fs pattern %d lt -1",
+                ($i % $max_patterns);
         } else {
             printf GNUPLOT "'-' notitle with boxes ls %d", $i+3;
         }
@@ -1337,10 +1341,10 @@ $lx+225, $ly+186+157*$i, $legend[$legidx];
             print STDERR "WARNING: unknown color $legend_fill\n";
             $fill_color = $colornm{'white'};
         }
-        my $fill_style = ($legend_fill eq '') ? 0 : 20;
+        my $fill_style = ($legend_fill eq '') ? -1 : 20;
         my $border = 50;
         my $x1 = $lx - $border;
-        my $x2 = $lx + 225 + $legend_text_width;# + $maxlen*&font_bb_diff_x(11);
+        my $x2 = $lx + 225 + $legend_text_width + $maxlen*&font_bb_diff_x(11) + $border;
         my $y1 = $ly - $border + 84;
         my $y2 = $ly + ($plotcount+0.5) * 157 + 10; # seems to need +10
         printf FIG2DEV

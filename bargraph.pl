@@ -8,6 +8,7 @@
 # http://code.google.com/p/bargraphgen/
 #
 # Contributions:
+# * sorting by data contributed by Tom Golubev
 # * legendfill= code inspired by Kacper Wysocki's code
 # * =barsinbg option contributed by Manolis Lourakis
 # * gnuplot 4.3 fixes contributed by Dima Kogan
@@ -58,7 +59,7 @@ Graph parameter types:
 # * Automatic arithmetic or harmonic mean calculation
 # * Automatic legend creation
 # * Automatic sorting, including sorting into SPEC CPU 2000 integer and 
-#   floating point benchmark groups
+#   floating point benchmark groups and sorting by data 
 #
 # Multiple data sets can either be separated by =multi,
 #   or in a table with =table.  Does support incomplete datasets,
@@ -80,6 +81,9 @@ Graph parameter types:
 #    * eliminated =patterns color with recent gnuplots
 #    * added legendfontsz= option
 #    * added =legendinbg option (legend in fg is new default)
+#    * added =reverseorder option (from Tom Golubev)
+#    * added =sortdata_ascend option (from Tom Golubev)
+#    * added =sortdata_descend option (from Tom Golubev)
 #    * added =barsinbg option (from Manolis Lourakis)
 #    * added horizline= option (issue #2)
 #    * added grouprotateby= option (issue #1)
@@ -241,6 +245,9 @@ $ylabelshift = "0,0";
 $sort = 0;
 # sort into SPEC CPU 2000 and JVM98 groups: first, SPECFP, then SPECINT, then JVM
 $sortbmarks = 0;
+$sortdata_ascend = 0;   # sort by data, from low to high
+$sortdata_descend = 0;  # sort by data, from high to low
+$reverseorder = 0;      # if not sorting, reverse order
 $bmarks_fp = "ammp applu apsi art equake facerec fma3d galgel lucas mesa mgrid sixtrack swim wupwise";
 $bmarks_int = "bzip2 crafty eon gap gcc gzip mcf parser perlbmk twolf vortex vpr";
 $bmarks_jvm = "check compress jess raytrace db javac mpegaudio mtrt jack checkit";
@@ -380,11 +387,19 @@ while (<IN>) {
             $datasub = $1;
         } elsif (/^=percent/) {
             $percent = 1;
+        } elsif (/^=sortdata_ascend/) {
+            $sort = 1;
+            $sortdata_ascend = 1;
+        } elsif (/^=sortdata_descend/) {
+            $sort = 1;
+            $sortdata_descend = 1;
         } elsif (/^=sortbmarks/) {
             $sort = 1;
             $sortbmarks = 1;
-        } elsif (/^=sort/) { # don't prevent match of =sortbmarks
+        } elsif (/^=sort/) { # don't prevent match of =sort*
             $sort = 1;
+        } elsif (/^=reverseorder/) {
+            $reverseorder = 1;
         } elsif (/^=arithmean/) {
             die "Stacked-clustered does not suport mean" if ($stackcluster);
             $use_mean = 1;
@@ -652,12 +667,20 @@ if (!$stacked) {
 if ($sort) {
     if ($sortbmarks) {
         @sorted = sort sort_bmarks (keys %names);
+    } elsif ($sortdata_ascend) {
+        @sorted = sort { $entry{0,$a,0} <=> $entry{0,$b,0}} (keys %names);
+    } elsif ($sortdata_descend) {
+        @sorted = sort { $entry{0,$b,0} <=> $entry{0,$a,0}} (keys %names);
     } else {
         @sorted = sort (keys %names);
     }
 } else {
-    # put into order seen in file
-    @sorted = sort {$order{$a} <=> $order{$b}} (keys %names);
+    # put into order seen in file, or reverse
+    if ($reverseorder) {
+        @sorted = sort {$order{$b} <=> $order{$a}} (keys %names);
+    } else {
+        @sorted = sort {$order{$a} <=> $order{$b}} (keys %names);
+    }
 }
 
 if ($use_mean) {

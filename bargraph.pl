@@ -70,8 +70,8 @@ Graph parameter types:
 # For complete documentation see
 #   http://www.burningcutlery.com/derek/bargraph/
 
-# This is version 4.5 pre-release.
-# Changes so far in version 4.5, yet to be released:
+# This is version 4.5.
+# Changes in version 4.5, released January 17, 2010:
 #    * changed legends to have a white background and border outline
 #      by default, with legendfill= option (inspired by Kacper
 #      Wysocki's code) to control the background fill color (and
@@ -812,11 +812,12 @@ my $legend_text_width = 0;
 my $legend_text_height = 0;
 my $legend_prefix_width = 0;
 # base to subtract prefix itself
-$extra_gnuplot_cmds .= "set label \"$dummy_prefix\" at 0,0\n";
+# avoid x or y of 0 since illegal for logscale
+$extra_gnuplot_cmds .= "set label \"$dummy_prefix\" at 1,1\n";
 for ($i=0; $i<$plotcount; $i++) {
     # no need to reverse labels: order doesn't matter
-    $label = sprintf("set label \"%s%s\" at %d,0",
-                     $dummy_prefix, $legend[$i], $i);
+    $label = sprintf("set label \"%s%s\" at %d,1",
+                     $dummy_prefix, $legend[$i], $i + 1);
     $extra_gnuplot_cmds .= "$label\n";
 }
 

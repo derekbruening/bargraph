@@ -70,7 +70,12 @@ Graph parameter types:
 # For complete documentation see
 #   http://www.burningcutlery.com/derek/bargraph/
 
-# This is version 4.5.
+# This is pre-release version 4.6.
+# Changes in version 4.6, not yet released:
+#    * added leading_space_mul=, intra_space_mul=, and barwidth=
+#      parameters to control spacing and bar size.  as part of this change,
+#      bars are no longer placed in an integer-based fashion.
+#    * fixed gnuplot 4.0 regression
 # Changes in version 4.5, released January 17, 2010:
 #    * changed legends to have a white background and border outline
 #      by default, with legendfill= option (inspired by Kacper
@@ -178,6 +183,7 @@ $fig2dev_path = "fig2dev";
 $debug_seefig_unmod = 0;
 $png_transparent = 1;
 
+# FIXME i#13: switch to GetOptions
 while ($#ARGV >= 0) {
     if ($ARGV[0] eq '-fig') {
         $output = "fig";
@@ -211,6 +217,13 @@ while ($#ARGV >= 0) {
 }
 die $usage if ($#ARGV >= 0 || $graph eq "");
 open(IN, "< $graph") || die "Couldn't open $graph";
+
+# gnuplot syntax varies by version
+$gnuplot_version = `$gnuplot_path --version`;
+$gnuplot_version =~ /gnuplot ([\d\.]+)/;
+$gnuplot_version = $1;
+$gnuplot_uses_offset = 1;
+$gnuplot_uses_offset = 0 if ($gnuplot_version <= 4.0);
 
 # support for clusters and stacked
 $stacked = 0;
@@ -260,6 +273,13 @@ $lineat = "";
 $gridx = "noxtics";
 $gridy = "ytics";
 $noupperright = 0;
+
+# space on both ends of graph
+$leading_space_mul = 0; # set below
+# space between clusters
+$intra_space_mul = 0; # set below
+# width of bars
+$barwidth = 0; # set below
 
 $invert = 0;
 
@@ -314,6 +334,7 @@ $barsinbg = 0;
 while (<IN>) {
     next if (/^\#/ || /^\s*$/);
     # line w/ = is a control line (except =>)
+    # FIXME i#13: switch to GetOptions
     if (/=[^>]/) {
         if (/^=cluster(.)/) {
             $splitby = $1;
@@ -487,6 +508,12 @@ while (<IN>) {
             $barsinbg = 1;
         } elsif (/^=legendinbg/) {
             $legend_depth = 100;
+        } elsif (/^leading_space_mul=(.+)/) {
+            $leading_space_mul = $1;
+        } elsif (/^intra_space_mul=(.+)/) {
+            $intra_space_mul = $1;
+        } elsif (/^barwidth=(.+)/) {
+            $barwidth = $1;
         } else {
             die "Unknown command $_\n";
         }
@@ -642,26 +669,11 @@ $groupcount = $groupset + 1;
 
 $clustercount = $bmarks_seen if ($stackcluster);
 
-# FIXME: absolute boxwidth doesn't work well w/ logarithmic axes
-$boxwidth=0.5;
-if (!$stacked) {
-    if ($clustercount == 2) {
-        $boxwidth=0.3;
-    } elsif ($clustercount == 3) {
-        $boxwidth=0.26;
-    } elsif ($clustercount == 4) {
-        $boxwidth=0.2;
-    } elsif ($clustercount == 5) {
-        $boxwidth=0.16;
-    } elsif ($clustercount == 6) {
-        $boxwidth=0.12;
-    } elsif ($clustercount == 7) {
-        $boxwidth=0.11;
-    } elsif ($clustercount == 8) {
-        $boxwidth=0.09;
-    } elsif ($clustercount >= 9) {
-        $boxwidth=0.75/$clustercount;
-    }
+if ($barwidth > 0) {
+    $boxwidth = $barwidth;
+} else {
+    # default
+    $boxwidth = 0.75/$clustercount;
 }
 
 if ($sort) {
@@ -682,6 +694,32 @@ if ($sort) {
         @sorted = sort {$order{$a} <=> $order{$b}} (keys %names);
     }
 }
+
+# default spacing: increase spacing if have many clusters+bmarks
+# but keep lead spacing small if only one bmark
+if ($leading_space_mul != 0) {
+    # user-specified
+    $outer_space = $boxwidth * $leading_space_mul;
+} else {
+    $outer_space = $boxwidth * (1.0 + ($clustercount-1)/4.);
+}
+if ($intra_space_mul != 0) {
+    # user-specified
+    $intra_space = $boxwidth * $intra_space_mul;
+} else {
+    $intra_space = $boxwidth * (1.0 + ($clustercount-1)/10.);
+}
+
+# clamp at 1/10 the full width, if not user-specified
+$num_items = $#sorted + 1 + (($use_mean) ? 1 : 0);
+$xmax = get_xval($groupcount-1, $clustercount-1, $num_items-1)
+    + $boxwidth/2.;
+$outer_space = $xmax/10. if ($outer_space > $xmax/10. && $leading_space_mul == 0);
+$intra_space = $xmax/10. if ($intra_space > $xmax/10. && $intra_space_mul == 0);
+
+# re-calculate now that we know $intra_space and $outer_space
+$xmax = get_xval($groupcount-1, $clustercount-1, $num_items-1)
+    + $boxwidth/2. + $outer_space;
 
 if ($use_mean) {
     for ($i=0; $i<$plotcount; $i++) {
@@ -720,17 +758,17 @@ if ($use_mean) {
 # x-axis labels
 $xtics = "";
 for ($g=0; $g<$groupcount; $g++) {
-    $item = 1;
+    $item = 0;
     foreach $b (@sorted) {
         if ($stackcluster) {
             $xval = get_xval($g, $item, $item);
         } else {
-            $xval = $item;
+            $xval = get_xval($g, ($clustercount-1)/2., $item);
         }
         if ($usexlabels) {
             $label = $b;
         } else {
-            if ($stackcluster && $grouplabels && $item==&ceil($bmarks_seen/2)) {
+            if ($stackcluster && $grouplabels && $item==&ceil($bmarks_seen/2)-1) {
                 $label = $groupname[$g];
             } else {
                 $label = "";
@@ -740,8 +778,10 @@ for ($g=0; $g<$groupcount; $g++) {
         $item++;
     }
     if ($stackcluster && $grouplabels && $usexlabels) {
-        $label = sprintf("set label \"%s\" at %d,0 center rotate by %d",
-                         $groupname[$g], $g+1, $grouplabel_rotateby);
+        $label = sprintf("set label \"%s\" at %f,0 center rotate by %d",
+                         $groupname[$g], get_xval($g, ($clustercount-1)/2.,
+                                                  ($clustercount-1)/2.),
+                         $grouplabel_rotateby);
         $extra_gnuplot_cmds .= "$label\n";
     }
 }
@@ -765,14 +805,14 @@ if ($use_mean) {
         $xtics .= "\"\" $item, ";
     }
     if ($stackcluster) {
-        $xval = get_xval($g, $item, $item);
+        # FIXME: support mean and move this into $g loop
+        $xval = get_xval(0, $item, $item);
     } else {
-        $xval = $item;
+        $xval = get_xval(0, ($clustercount-1)/2., $item);
     }
     $xtics .= "\"$mean_label\" $xval, ";
     $item++;
 }
-$xmax = &ceil($xval);
 
 # lose the last comma-space
 chop $xtics;
@@ -1042,15 +1082,17 @@ set terminal fig color depth %d
 ", $title, $plot_depth;
 
 printf GNUPLOT "
-set xlabel '%s' offset %s
-set ylabel '%s' offset %s
+set xlabel '%s' %s%s
+set ylabel '%s' %s%s
 set xtics %s (%s)
 set format y \"%s\"
-", $xlabel, $xlabelshift, $ylabel, $ylabelshift, $xticsopts, $xtics, $yformat;
+", $xlabel, $gnuplot_uses_offset ? "offset " : "", $xlabelshift,
+$ylabel, $gnuplot_uses_offset ? "offset " : "", $ylabelshift,
+$xticsopts, $xtics, $yformat;
 
 printf GNUPLOT "
 set boxwidth %s
-set xrange [0:%d]
+set xrange [0:%.2f]
 set yrange[%s:%s]
 set grid %s %s
 ", $boxwidth, $xmax, $ymin, $ymax, $gridx, $gridy;
@@ -1081,7 +1123,7 @@ for ($g=0; $g<$groupcount; $g++) {
             printf GNUPLOT "'-' notitle with boxes fs pattern %d lt -1",
                 ($i % $max_patterns);
         } else {
-            printf GNUPLOT "'-' notitle with boxes ls %d", $i+3;
+            printf GNUPLOT "'-' notitle with boxes lt %d", $i+3;
         }
     }
 }
@@ -1089,14 +1131,14 @@ for ($g=0; $g<$groupcount; $g++) {
 if ($yerrorbars) {
     for ($g=0; $g<$groupcount; $g++) {
         for ($i=0; $i<$plotcount; $i++) {
-            print GNUPLOT ", '-' notitle with yerrorbars ls 0";
+            print GNUPLOT ", '-' notitle with yerrorbars lt 0";
         }
     }
 }
 print GNUPLOT "\n";
 for ($g=0; $g<$groupcount; $g++) {
     for ($i=0; $i<$plotcount; $i++) {
-        $line = 1;
+        $line = 0;
         foreach $b (@sorted) {
             # support missing values in some datasets
             if (defined($entry{$g,$b,$i})) {
@@ -1109,7 +1151,7 @@ for ($g=0; $g<$groupcount; $g++) {
             }
         }
         # skip over missing values to put harmean at end
-        $line = $xmax - 1;
+        $line = $bmarks_seen;
         if ($use_mean) {
             $xval = get_xval($g, $i, $line);
             print GNUPLOT "$xval, $harmean[$i]\n";
@@ -1121,7 +1163,7 @@ for ($g=0; $g<$groupcount; $g++) {
 if ($yerrorbars) {
     for ($g=0; $g<$groupcount; $g++) {
         for ($i=0; $i<$plotcount; $i++) {
-            $line = 1; 
+            $line = 0; 
             foreach $b (@sorted) {
                 # support missing values in some datasets
                 if (defined($entry{$g,$b,$i})) {
@@ -1134,7 +1176,7 @@ if ($yerrorbars) {
                 }
             }
             # skip over missing values to put harmean at end
-            $line = $xmax - 1;
+            $line = $bmarks_seen;
             # an e separates each dataset
             print GNUPLOT "e\n";
         }
@@ -1437,9 +1479,9 @@ sub get_xval($, $, $)
     my ($gset, $dset, $item) = @_;
     my $xvalue;
     if ($stacked || $clustercount == 1) {
-        $xvalue = $item;
+        $xvalue = &cluster_xval($item, 0);
     } elsif ($stackcluster) {
-        $xvalue = &cluster_xval($gset+1, $item-1);
+        $xvalue = &cluster_xval($gset, $item);
     } else {
         $xvalue = &cluster_xval($item, $dset);
     }
@@ -1449,13 +1491,9 @@ sub get_xval($, $, $)
 sub cluster_xval($, $)
 {
     my ($base, $dset) = @_;
-    if ($clustercount % 2 == 0) {
-        # we want the sequence ...,-5/2,-3/2,-1/2,1/2,3/2,5/2,...
-        $xvalue = $base + $boxwidth/2 * (2*$dset-($clustercount-1));
-    } else {
-        # we want the sequence ...,-2,-1,0,1,2,,...
-        $xvalue = $base + $boxwidth * ($dset - ($clustercount-1)/2);
-    }
+    return $outer_space + $boxwidth/2. +
+        $base*($clustercount*$boxwidth + $intra_space) +
+        $dset*$boxwidth;
 }
 
 sub sort_bmarks()

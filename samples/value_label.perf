@@ -12,8 +12,8 @@ max=160
 =nolegoutline
 legendfill=
 legendy=1
-extraops=set label "236%" at 4.8,168 right font "Times,10"
-extraops=set label "445%" at 10.8,168 right font "Times,10"
+extraops=set label "236%" at 4.2,168 right font "Times,10"
+extraops=set label "445%" at 9.8,168 right font "Times,10"
 bzip2           1.07    1.11    1.08    1.09    1.03    0.99    1.13 
 crafty          1.87    1.24    1.26    1.30    2.44    2.34    1.85 
 eon             1.37    1.23    1.21    1.25    1.77    1.81    1.65 

@@ -72,6 +72,7 @@ Graph parameter types:
 
 # This is pre-release version 4.6.
 # Changes in version 4.6, not yet released:
+#    * added logscaley= to support logarithmic y values
 #    * added leading_space_mul=, intra_space_mul=, and barwidth=
 #      parameters to control spacing and bar size.  as part of this change,
 #      bars are no longer placed in an integer-based fashion.
@@ -292,6 +293,8 @@ $datasub = 0;
 $percent = 0;
 $base1 = 0;
 $yformat = "%.0f";
+
+$logscaley = 0;
 
 $extra_gnuplot_cmds = "";
 
@@ -514,6 +517,8 @@ while (<IN>) {
             $intra_space_mul = $1;
         } elsif (/^barwidth=(.+)/) {
             $barwidth = $1;
+        } elsif (/^logscaley=(.+)/) {
+            $logscaley = $1;
         } else {
             die "Unknown command $_\n";
         }
@@ -828,7 +833,10 @@ if ($ylabel ne "") {
 }
 
 if ($calc_min) {
-    if ($min < 0) {
+    if ($logscaley > 0) {
+        die "Error: logscaley does not support negative values\n" if ($min < 0);
+        $ymin = 1;
+    } elsif ($min < 0) {
         # round to next lower int
         if ($min < 0) {
             $min = int($min - 1);
@@ -1105,6 +1113,9 @@ set border 3
 ";
 }
 
+if ($logscaley > 0) {
+    print GNUPLOT "set logscale y $logscaley\n";
+}
 if ($extra_gnuplot_cmds ne "") {
     print GNUPLOT "\n$extra_gnuplot_cmds\n";
 }

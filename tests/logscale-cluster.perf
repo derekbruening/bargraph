@@ -1,0 +1,20 @@
+# clustered graph example from Derek Bruening's CGO 2005 talk
+=cluster;20% regeneration;40% regeneration;60% regeneration;80% regeneration;90% regeneration
+=harmean
+meanlabel=average
+=sortbmarks
+yformat=%gx
+xlabel=Benchmark
+ylabel=Memory usage versus code size
+=table
+logscaley=8
+
+
+#          20% 40% 60% 80% 90%
+SPECFP    188  86  85  76  76
+SPECINT    80 976  70  63  57
+SPECJVM    60  49  49  44  45
+excel      63  51 840  03  03
+photoshp   61  34  27  22  23
+powerpnt   62  39  24  18  12
+winword    72  54  40  33 9903

@@ -1,0 +1,34 @@
+# basic bar graph example from Derek Bruening's PhD defense
+=harmean
+meanlabel=average
+=sortbmarks
+yformat=%gx
+xlabel=Benchmark
+ylabel=Memory usage versus code size
+
+ammp         234565.07 
+applu        123456.66 
+apsi         123456.90 
+art          234568.67 
+bzip2        234564.00 
+crafty       234560.99 
+eon          123456.94 
+equake       234569.14 
+gap          234563.18 
+gcc          234561.35 
+gzip         234564.00 
+mcf          234566.37 
+mesa         234564.45 
+mgrid        234562.94 
+parser       234565.74 
+perlbmk      123456.34 
+sixtrack     123456.95 
+swim         234567.62 
+twolf        234560.36 
+vortex       123456.04 
+vpr          234564.51 
+wupwise      234561.84 
+excel        123456.25 
+photoshp     123456.84 
+powerpnt     234562.42 
+winword      123456.79 

@@ -1,0 +1,39 @@
+# Date: Wed, 13 Feb 2008 10:14:14 -0500
+# From: Derek Bruening <iye@alum.mit.edu>
+# To: "Dr M. Duszynski" <marek@ic.ac.uk>
+# Subject: Re: bargraph
+# 
+# You're describing a clustered stacked graph, which my script supports, but
+# with a single dataset and spaces between certain elements.  I've wanted to
+# add a spacing or "blank entry" feature before.  Here's one way to get close
+# to that using the current script, via a not-perfect hack to add
+# almost-blank entries:
+#  
+# clustered and stacked single-dataset w/ "spaces" graph example w/ bogus data
+=stackcluster;Basic Blocks;Traces;Hashtables;Stubs
+=nogridy
+=noupperright
+legendx=7200
+legendy=1800
+yformat=%g%%
+xlabel=Benchmark
+ylabel=Percentage of total heap usage
+
+=table
+ammp             25.635 23.094 14.780 5.543 
+applu            25.035 27.375 14.974 4.913 
+apsi             19.012 33.135 15.210 4.346 
+art              25.118 10.322 17.892 4.129 
+equake           22.754 24.061 13.600 5.492 
+_                 0 0 0 0
+Xammp             27.863 18.913 15.536 5.404
+Xapplu            24.501 18.657 11.689 4.720
+Xapsi             21.755 26.093 16.096 5.407
+Xart              27.188 17.741 11.981 5.069
+Xequake           29.172 18.688 11.851 5.926
+__                0 0 0 0
+Yammp             17.863 11.913 19.536 9.404
+Yapplu            34.501 12.657 18.689 7.720
+Yapsi             11.755 23.093 17.096 2.407
+Yart              17.188 14.741 16.981 3.069
+Yequake           22.172 15.688 15.851 4.926

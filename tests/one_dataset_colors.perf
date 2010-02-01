@@ -1,0 +1,36 @@
+# example of the =color_per_datum option
+# based on a basic bar graph example from Derek Bruening's PhD defense
+=harmean
+meanlabel=average
+=sortbmarks
+=color_per_datum
+yformat=%gx
+xlabel=Benchmark
+ylabel=Memory usage versus code size
+
+ammp          15.07 
+applu          5.66 
+apsi           6.90 
+art           28.67 
+bzip2         24.00 
+crafty        10.99 
+eon            5.94 
+equake        19.14 
+gap           13.18 
+gcc           11.35 
+gzip          24.00 
+mcf           26.37 
+mesa          14.45 
+mgrid         12.94 
+parser        15.74 
+perlbmk        9.34 
+sixtrack       5.95 
+swim          17.62 
+twolf         10.36 
+vortex         8.04 
+vpr           14.51 
+wupwise       11.84 
+excel          9.25 
+photoshp       5.84 
+powerpnt      12.42 
+winword        8.79 

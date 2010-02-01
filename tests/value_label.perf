@@ -1,0 +1,27 @@
+# example of explicit value display from Derek Bruening's PhD defense
+=cluster;Cycles;Instructions Retired;Micro-ops Retired;Data Memory References;Data Cache Misses;Data Cache Lines Allocated;Branches Mispredicted
+=table
+=harmean
+=sortbmarks
+=percent
+yformat=%g%%
+xlabel=Benchmark
+ylabel=Beyond native
+# gap and vortex stick up too much so we cut off and label
+max=160
+=nolegoutline
+legendfill=
+legendy=1
+extraops=set label "236%" at 4.2,168 right font "Times,10"
+extraops=set label "445%" at 9.8,168 right font "Times,10"
+bzip2           1.07    1.11    1.08    1.09    1.03    0.99    1.13 
+crafty          1.87    1.24    1.26    1.30    2.44    2.34    1.85 
+eon             1.37    1.23    1.21    1.25    1.77    1.81    1.65 
+gap             1.53    1.47    1.45    1.68    1.02    1.27    3.36 
+gcc             1.59    1.35    1.40    1.36    1.25    1.18    1.38 
+gzip            1.16    1.06    1.06    1.06    1.02    1.00    1.21 
+mcf             0.99    1.02    1.00    1.01    1.00    1.01    0.84 
+parser          1.16    1.23    1.18    1.22    1.06    1.06    1.53 
+twolf           1.12    1.10    1.11    1.07    1.07    1.08    1.11 
+vortex          1.56    1.28    1.21    1.34    1.53    1.54    5.45 
+vpr             1.07    1.11    1.09    1.11    1.03    1.06    1.13 

@@ -1,0 +1,17 @@
+# basic bar graph example from Derek Bruening's PhD defense
+#=harmean
+=cluster;First;Second
+meanlabel=average
+=sortbmarks
+yformat=%gx
+xlabel=Benchmark
+ylabel=Memory usage versus code size
+# delim via tab
+=table	
+
+ammp_foo        	  15.07 	 25.07
+name with spaces	 5.66	 15.66
+apsi	           6.90	 16.90
+winword	        8.79	 18.79
+firstonly	   22.0	
+secondonly 	  	    9.0

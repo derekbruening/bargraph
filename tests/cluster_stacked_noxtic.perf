@@ -1,0 +1,87 @@
+# clustered and stacked graph example w/ bogus data
+# no individual x tic labels
+=stackcluster;Basic Blocks;Traces;Hashtables;Stubs
+=noxlabels
+=sortbmarks
+=nogridy
+=noupperright
+=norotate
+legendx=7000
+legendy=1800
+yformat=%g%%
+xlabel=Benchmark
+ylabel=Percentage of total heap usage
+
+multimulti=Private Caches
+ammp             25.635
+applu            25.035
+apsi             19.012
+art              25.118
+equake           22.754
+=multi
+ammp             23.094
+applu            27.375
+apsi             33.135
+art              10.322
+equake           24.061
+=multi
+ammp             14.780
+applu            14.974
+apsi             15.210
+art              17.892
+equake           13.600
+=multi
+ammp              5.543
+applu             4.913
+apsi              4.346
+art               4.129
+equake            5.492
+multimulti=Shared Caches
+ammp             27.863
+applu            24.501
+apsi             21.755
+art              27.188
+equake           29.172
+=multi
+ammp             18.913
+applu            18.657
+apsi             26.093
+art              17.741
+equake           18.688
+=multi
+ammp             15.536
+applu            11.689
+apsi             16.096
+art              11.981
+equake           11.851
+=multi
+ammp              5.404
+applu             4.720
+apsi              5.407
+art               5.069
+equake            5.926
+multimulti=Persistent Caches
+ammp             17.863
+applu            34.501
+apsi             11.755
+art              17.188
+equake           22.172
+=multi
+ammp             11.913
+applu            12.657
+apsi             23.093
+art              14.741
+equake           15.688
+=multi
+ammp             19.536
+applu            18.689
+apsi             17.096
+art              16.981
+equake           15.851
+=multi
+ammp              9.404
+applu             7.720
+apsi              2.407
+art               3.069
+equake            4.926
+

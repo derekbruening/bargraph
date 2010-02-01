@@ -1,0 +1,23 @@
+# test a LOT of data
+=cluster;20% regeneration;40% regeneration;60% regeneration;80% regeneration;90% regeneration;dataset 6;dataset 7;dataset 8;dataset 9;dataset 10;dataset 11;dataset 12;dataset 13;dataset 14;dataset 15
+=table
+yformat=%g%%
+max=100
+=norotate
+legendx=5200
+legendy=1450
+ylabel=Basic block cache size reduction
+# stretch it out in x direction
+extraops=set size 1.2,1
+=barsinbg
+#=legendinbg
+legendfill=grey
+
+#          20% 40% 60% 80% 90%
+SPECFP     88  86  85  76  76    88  86  85  76  76 88  86  85  76  76 
+SPECINT    80  76  70  63  57    80  76  70  63  57 80  76  70  63  57 
+SPECJVM    60  49  49  44  45    60  49  49  44  45 60  49  49  44  45 
+excel      63  51  40  03  03    63  51  40  03  03 63  51  40  03  03 
+photoshp   61  34  27  22  23    61  34  27  22  23 61  34  27  22  23 
+powerpnt   62  39  24  18  12    62  39  24  18  12 62  39  24  18  12 
+winword    72  54  40  33  03    72  54  40  33  03 72  54  40  33  03 

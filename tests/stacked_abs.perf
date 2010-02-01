@@ -1,0 +1,12 @@
+=stacked;a;b;c
+=table
+=norotate
+=nogridy
+=noupperright
+yformat=%g
+xlabel=animal
+ylabel=something
+=stackabs
+
+wolverine 80 101 150
+mink      90 111 130

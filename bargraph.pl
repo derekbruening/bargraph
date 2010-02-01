@@ -70,8 +70,11 @@ Graph parameter types:
 # For complete documentation see
 #   http://www.burningcutlery.com/derek/bargraph/
 
-# This is pre-release version 4.6.
-# Changes in version 4.6, not yet released:
+# This is version 4.6.
+# Changes in version 4.6, released January 31, 2010:
+#    * added automatic legend placement, including automatically
+#      finding an empty spot inside the graph, via the 'inside',
+#      'right', 'top', and 'center' keywords in legendx= and legendy=
 #    * added logscaley= to support logarithmic y values
 #    * added leading_space_mul=, intra_space_mul=, and barwidth=
 #      parameters to control spacing and bar size.  as part of this change,
@@ -183,6 +186,7 @@ $gnuplot_path = "gnuplot";
 $fig2dev_path = "fig2dev";
 $debug_seefig_unmod = 0;
 $png_transparent = 1;
+$verbose = 0;
 
 # FIXME i#13: switch to GetOptions
 while ($#ARGV >= 0) {
@@ -209,6 +213,8 @@ while ($#ARGV >= 0) {
         die $usage if ($#ARGV <= 0);
         shift;
         $fig2dev_path = $ARGV[0];
+    } elsif ($ARGV[0] eq '-v') {
+        $verbose = 1;
     } else {
         $graph = $ARGV[0];
         shift;
@@ -300,8 +306,8 @@ $extra_gnuplot_cmds = "";
 
 # if still 0 later will be initialized to default
 $use_legend = 1;
-$legendx = 0;
-$legendy = 0;
+$legendx = 'inside';
+$legendy = 'top';
 $legend_fill = 'white';
 $legend_outline = 1;
 $legend_font_size = 0; # if left at 0 will be $font_size-1
@@ -333,6 +339,9 @@ $yerrorbars = 0;
 
 # are bars in the foreground (default) or background of plot?
 $barsinbg = 0;
+
+# sentinel value
+$sentinel = 999999;
 
 while (<IN>) {
     next if (/^\#/ || /^\s*$/);
@@ -470,9 +479,9 @@ while (<IN>) {
             $gridy = "noytics";
         } elsif (/^=nolegend/) {
             $use_legend = 0;
-        } elsif (/^legendx=(\d+)/) {
+        } elsif (/^legendx=(\S+)/) {
             $legendx = $1;
-        } elsif (/^legendy=(\d+)/) {
+        } elsif (/^legendy=(\S+)/) {
             $legendy = $1;
         } elsif (/^legendfill=(.*)/) {
             $legend_fill = $1;
@@ -1254,6 +1263,16 @@ if ($stackcluster && $grouplabels && $usexlabels) {
     $groupset = 0;
 }
 
+# compute bounding boxes
+$graph_min_x = $sentinel;
+$graph_max_x = 0;
+$graph_min_y = $sentinel;
+$graph_max_y = 0;
+$graph_box_width = 0;
+$graph_box_max_y = 0;
+
+my $is_polyline = 0;
+
 $set = -1;
 $set_raw = "";
 while (<FIG>) {
@@ -1367,37 +1386,185 @@ $figcolorins|;
     # not all: FIXME: why?): I'm turning it to black
     s|^2 1 0 1 4 4 $plot_depth|2 1 0 1 0 0 $plot_depth|;
 
+    # Bounds: we assume for polyline on 2nd line w/ leading space
+    # We process after above changes so we don't see temp text, etc.
+    if (/^(\d+)(\s+\S+){7}\s+(\S+)/) {
+        $is_polyline = ($1 == 2);
+        # use fill style to rule out rectangle around entire graph
+        $is_bar = ($is_polyline && $3 > -1);
+    }
+    if ($is_polyline && /^\s+\d+/) {
+        my @coords = split(' ', $_);
+        for ($i = 0; $i <= $#coords; $i++) {
+            if ($i % 2 == 0) {
+                $graph_min_x = $coords[$i] if ($coords[$i] < $graph_min_x);
+                $graph_max_x = $coords[$i] if ($coords[$i] > $graph_max_x);
+            } else {
+                $graph_min_y = $coords[$i] if ($coords[$i] < $graph_min_y);
+                $graph_max_y = $coords[$i] if ($coords[$i] > $graph_max_y);
+            }
+        }
+        if ($is_bar && $#coords == 9) { # verify rectangle: 5 points
+            my $x1 = $sentinel;
+            my $y1 = $sentinel;
+            my $x2 = 0;
+            my $y2 = 0;
+            for ($i = 0; $i <= $#coords; $i += 2) {
+                $x1 = $coords[$i] if ($coords[$i] < $x1);
+                $x2 = $coords[$i] if ($coords[$i] > $x2);
+            }
+            for ($i = 1; $i <= $#coords; $i += 2) {
+                $y1 = $coords[$i] if ($coords[$i] < $y1);
+                $y2 = $coords[$i] if ($coords[$i] > $y2);
+            }
+            print STDERR "bar $x1,$y1 $x2,$y2 <= $_" if ($verbose);
+            # use x1 as the key.  combine data for stacked bars.
+            $bardata{$x1}{"x2"} = $x2;
+            if (defined($bardata{$x1}{"y1"})) {
+                $bardata{$x1}{"y1"} = $y1 if ($y1 < $bardata{$x1}{"y1"});
+            } else {
+                $bardata{$x1}{"y1"} = $y1;
+            }
+            $graph_box_max_y = $y2 if ($y2 > $graph_box_max_y);
+            my $width = $x2 - $x1;
+            if ($graph_box_width == 0) {
+                $graph_box_width = $width;
+            } else {
+                die "Boxes should not be different widths: report this!\n"
+                    # I've seen them be different by 1
+                    unless (abs($width - $graph_box_width) < 5);
+            }
+        }
+    }
+    if (/^4(\s+\S+){8}\s+([-\d\.]+)\s+([-\d\.]+)\s+([-\d\.]+)\s+([-\d\.]+)/) {
+        # boundy,boundx x,y
+        # FIXME: take into account rotation!  no matter the orientation,
+        # the text bounds are given as though the text is horizontal.
+        my $maxx = $3 + $4;
+        my $maxy = $2 + $5;
+        $graph_min_x = $4 if ($4 < $graph_min_x);
+        # ignoring fonts for max x: bounds seem to be over-estimates, and even
+        # if x labels stick off end, fine for legend to align w/ graph itself
+        $graph_min_y = $5 if ($5 < $graph_min_y);
+        $graph_max_y = $maxy if ($maxy > $graph_max_y);
+    }
+
     print FIG2DEV $_;
 }
 
+print STDERR "bounds are $graph_min_x,$graph_min_y $graph_max_x,$graph_max_y\n"
+    if ($verbose);
+
 # add the legend
 if ($use_legend && $plotcount > 1) {
-    # center top is around lx=3800 ly=900
-    # on right: lx=7100 ly=2300
-    if ($legendx == 0) {
-        $lx=3800;
-    } else {
-        $lx=$legendx;
-    }
-    if ($legendy == 0) {
-        $ly=1200 - $plotcount*150;
-    } else {
-        $ly=$legendy;
-    }
-      
-    for ($i=0; $i<$plotcount; $i++) {
-        # this 157 should really be derived from $legend_text_height
-        $dy=$i*157;
-        printf FIG2DEV
-"2 1 0 1 -1 $fillcolor[$i] $legend_depth 0 $fillstyle[$i] 0.000 0 0 0 0 0 5
-\t %d %d %d %d %d %d %d %d %d %d  
-",  $lx, $ly+200+$dy, $lx, $ly+84+$dy, $lx+121, $ly+84+$dy,
-    $lx+121, $ly+200+$dy, $lx, $ly+200+$dy;
-    }
-    my $maxlen = 0;
+    # first, compute bounding box of legend
     $legend_text_width -= $legend_prefix_width;
     # default is one smaller than main font so legend not so big
     $legend_font_size = $font_size - 1 if ($legend_font_size == 0);
+    my $maxlen = 0;
+    for ($i=0; $i<$plotcount; $i++) {
+        $leglen = length $legend[$i];
+        $maxlen = $leglen if ($leglen > $maxlen);
+    }
+    my $border = 50;
+    my $key_box_width = 121;
+    my $key_box_height = 116;
+    my $key_text_pre_space = 104;
+    # this should really be derived from $legend_text_height
+    my $key_text_line_space = 157;
+    my $legend_width = $border*2 + $key_box_width + $key_text_pre_space +
+        $legend_text_width +
+        $maxlen*&font_bb_diff_x($legend_old_fontsz, $legend_font_size);
+    my $legend_height = $border*2 + $plotcount*$key_text_line_space
+        # subtract off the extra spacing after bottom box
+        - ($key_text_line_space - $key_box_height);
+    # to get text centered where box is, shift from bottom of box
+    my $key_text_yshift = -5;
+
+    my $ly = $sentinel;
+    my $lx = $sentinel;
+
+    # try to fit inside the graph
+    if ($legendx eq 'inside') {
+        my $xstart = $sentinel;
+        my $ytall = $sentinel;
+        my $lastx;
+        foreach $x (sort (keys %bardata)) {
+            # we use $border*2 as a fudge factor to move below the top
+            # line and top x tics
+            $lastx = $x;
+            die "X value $x >= sentinel!\n" if ($x >= $sentinel);
+            die "Y value >= sentinel!\n" if ($bardata{$x}{"y1"} >= $sentinel);
+            $shift = $noupperright ? 0 : $border*3;
+            printf STDERR "bar @ x1=$x,y=%d\n", $bardata{$x}{"y1"} if ($verbose);
+            if ($graph_min_y + $shift + $legend_height + $border*2 < $bardata{$x}{"y1"}) {
+                $xstart = $x if ($xstart == $sentinel);
+                $ytall = $bardata{$x}{"y1"} if ($bardata{$x}{"y1"} < $ytall);
+            } else {
+                if ($xstart != $sentinel &&
+                    $x - $xstart > $legend_width + $border*2) {
+                    printf STDERR "legend fits inside $xstart,$x\n" if ($verbose);
+                    # center in the space
+                    $lx = ($xstart + $x - $legend_width)/2;
+                    $ly = (($graph_min_y + $shift) +
+                           ($ytall - $legend_height - $border*2)) / 2;
+                    # keep going: prefer right-most spot
+                }
+                $xstart = $sentinel;
+            }
+        }
+        if ($xstart != $sentinel &&
+            $lastx - $xstart > $legend_width + $border*2) {
+            printf STDERR "legend fits inside $xstart,$lastx\n" if ($verbose);
+            # center in the space
+            $lx = ($xstart + $lastx - $legend_width)/2;
+            $ly = (($graph_min_y + $shift) +
+                   ($ytall - $legend_height - $border*2)) / 2;
+        }
+    }
+
+    if ($lx == $sentinel) { # if legendx=inside matches, it sets $lx
+        if ($legendx eq 'inside') {
+            # if inside fails, use top
+            $legendx = 'center';
+            $legendy = 'top';
+        }
+        if ($legendx eq 'right') {
+            $lx = $graph_max_x + $border*2;
+        } elsif ($legendx eq 'center') {
+            $lx = ($graph_max_x - $graph_min_x - $legend_width) / 2 + $graph_min_x;
+        } else {
+            die "Invalid legendx value $legendx\n" unless ($legendx =~ /^\d+$/);
+            $lx = $legendx;
+        }
+    }
+    if ($ly == $sentinel) { # if legendx=inside matches, it sets $ly
+        if ($legendy eq 'top') {
+            $ly = $graph_min_y - $legend_height - $border*2;
+        } elsif ($legendy eq 'center') {
+            # center vertically considering only the graph area, not the labels beneath
+            $ly = ($graph_box_max_y - $graph_min_y - $legend_height) / 2 + $graph_min_y;
+        } else {
+            die "Invalid legendy value $legendy\n" unless ($legendy =~ /\d+/);
+            $ly = $legendy;
+        }
+    }
+
+    print STDERR "legend at $lx,$ly ($outer_space)\n" if ($verbose);
+      
+    # draw boxes w/ appropriate colors
+    for ($i=0; $i<$plotcount; $i++) {
+        $dy = $i * $key_text_line_space;
+        printf FIG2DEV
+"2 1 0 1 -1 $fillcolor[$i] $legend_depth 0 $fillstyle[$i] 0.000 0 0 0 0 0 5
+\t %d %d %d %d %d %d %d %d %d %d  
+",  $lx+$border, $ly+$border+$key_box_height+$dy, 
+    $lx+$border, $ly+$border+$dy, 
+    $lx+$border+$key_box_width, $ly+$border+$dy,
+    $lx+$border+$key_box_width, $ly+$border+$key_box_height+$dy,
+    $lx+$border, $ly+$border+$key_box_height+$dy;
+    }
+    # legend text
     for ($i=0; $i<$plotcount; $i++) {
         # legend was never reversed, reverse it here
         if ($stacked || $stackcluster) {
@@ -1414,24 +1581,28 @@ if ($use_legend && $plotcount > 1) {
 ", $legend_depth, $font_face, $legend_font_size,
 $legend_text_height + &font_bb_diff_y($legend_old_fontsz, $legend_font_size),
 $legend_text_width + $leglen*&font_bb_diff_x($legend_old_fontsz, $legend_font_size),
-$lx+225, $ly+186+157*$i, $legend[$legidx];
+$lx+$border+$key_box_width+$key_text_pre_space,
+$ly+$border+$key_box_height+$key_text_yshift+$key_text_line_space*$i,
+$legend[$legidx];
     }
     if ($legend_fill ne '' || $legend_outline) {
         # background fill for legend box
         my $fill_color;
-        if (defined($colornm{$legend_fill})) {
-            $fill_color = $colornm{$legend_fill};
-        } else {
-            print STDERR "WARNING: unknown color $legend_fill\n";
+        if ($legend_fill eq '') {
             $fill_color = $colornm{'white'};
+        } else {
+            if (defined($colornm{$legend_fill})) {
+                $fill_color = $colornm{$legend_fill};
+            } else {
+                print STDERR "WARNING: unknown color $legend_fill\n";
+                $fill_color = $colornm{'white'};
+            }
         }
         my $fill_style = ($legend_fill eq '') ? -1 : 20;
-        my $border = 50;
-        my $x1 = $lx - $border;
-        my $x2 = $lx + 225 + $border + $legend_text_width +
-            $maxlen*&font_bb_diff_x($legend_old_fontsz, $legend_font_size);
-        my $y1 = $ly - $border + 84;
-        my $y2 = $ly + ($plotcount+0.5) * 157 + 10; # seems to need +10
+        my $x1 = $lx;
+        my $x2 = $x1 + $legend_width;
+        my $y1 = $ly;
+        my $y2 = $y1 + $legend_height;
         printf FIG2DEV
             "2 2 0 $legend_outline 0 $fill_color %d 0 $fill_style 0.000 0 0 0 0 0 5
 \t %d %d %d %d %d %d %d %d %d %d

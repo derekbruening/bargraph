@@ -3,8 +3,8 @@
 =sortbmarks
 =nogridy
 =noupperright
-legendx=7000
-legendy=1800
+legendx=right
+legendy=center
 yformat=%g%%
 xlabel=Benchmark
 ylabel=Percentage of total heap usage

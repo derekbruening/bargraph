@@ -13,8 +13,8 @@
 =stackcluster;Basic Blocks;Traces;Hashtables;Stubs
 =nogridy
 =noupperright
-legendx=7200
-legendy=1800
+legendx=right
+legendy=center
 yformat=%g%%
 xlabel=Benchmark
 ylabel=Percentage of total heap usage

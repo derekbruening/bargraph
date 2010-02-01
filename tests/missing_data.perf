@@ -11,8 +11,6 @@ column=last
 yformat=%g%%
 xlabel=Benchmark
 ylabel=Time impact of stealing a register
-legendx=5800
-legendy=1720
 
         ammp    38.97    35.78     => 1.089
        applu   168.22   157.58     => 1.068

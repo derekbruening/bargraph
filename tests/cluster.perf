@@ -6,8 +6,6 @@ colors=black,yellow,red,med_blue,light_green
 yformat=%g%%
 max=100
 =norotate
-legendx=4200
-legendy=1450
 ylabel=Basic block cache size reduction
 # stretch it out in x direction
 extraops=set size 1.2,1

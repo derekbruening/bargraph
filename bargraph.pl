@@ -3,7 +3,7 @@
 # bargraph.pl: a bar graph builder that supports stacking and clustering.
 # Modifies gnuplot's output to fill in bars and add a legend.
 #
-# Copyright (C) 2004-2009 Derek Bruening <iye@alum.mit.edu>
+# Copyright (C) 2004-2010 Derek Bruening <iye@alum.mit.edu>
 # http://www.burningcutlery.com/derek/bargraph/
 # http://code.google.com/p/bargraphgen/
 #

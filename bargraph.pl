@@ -72,6 +72,7 @@ Graph parameter types:
 
 # This is pre-release version 4.7.
 # Changes in version 4.7, not yet released:
+#    * added custfont= feature
 #    * fixed bugs in centering in-graph legend box
 #    * added fudging for capital letters to work around gnuplot weirdness
 #      (issue #15)
@@ -500,6 +501,13 @@ while (<IN>) {
         } elsif (/^font=(.+)/) {
             if (defined($fig_font{$1})) {
                 $font_face = $fig_font{$1};
+            } else {
+                @known_fonts = keys(%fig_font);
+                die "Unknown font \"$1\": known fonts are @known_fonts";
+            }
+        } elsif (/^custfont=([^=]+)=(.+)/) {
+            if (defined($fig_font{$1})) {
+                $custfont{$2} = $fig_font{$1};
             } else {
                 @known_fonts = keys(%fig_font);
                 die "Unknown font \"$1\": known fonts are @known_fonts";
@@ -1371,17 +1379,18 @@ $figcolorins|;
 
     # Custom fonts
     if (/^(4\s+\d+\s+[-\d]+\s+\d+\s+[-\d]+)\s+[-\d]+\s+([\d\.]+)\s+([-\d\.]+)\s+(\d+)\s+([\d\.]+)\s+([\d\.]+)(\s+[-\d\.]+\s+[-\d\.]+) (.*)\\001/) {
-        $prefix = $1;
-        $oldsz = $2;
-        $orient = $3;
-        $flags = $4;
-        $szy = $5;
-        $szx = $6;
-        $text = $8; # $7 is position
-        $textlen = length($text);
-        $newy = $szy + &font_bb_diff_y($oldsz, $font_size);
-        $newx = $szx + $textlen * &font_bb_diff_x($oldsz, $font_size, $text);
-        s|^$prefix\s+[-\d]+\s+$oldsz\s+$orient\s+$flags\s+$szy\s+$szx|$prefix $font_face $font_size $orient $flags $newy $newx|;
+        my $prefix = $1;
+        my $oldsz = $2;
+        my $orient = $3;
+        my $flags = $4;
+        my $szy = $5;
+        my $szx = $6;
+        my $text = $8; # $7 is position
+        my $textlen = length($text);
+        my $newy = $szy + &font_bb_diff_y($oldsz, $font_size);
+        my $newx = $szx + $textlen * &font_bb_diff_x($oldsz, $font_size, $text);
+        my $newfont = defined($custfont{$text}) ? $custfont{$text} : $font_face;
+        s|^$prefix\s+[-\d]+\s+$oldsz\s+$orient\s+$flags\s+$szy\s+$szx|$prefix $newfont $font_size $orient $flags $newy $newx|;
     } elsif (/^4/) {
         print STDERR "WARNING: unknown font element $_";
     }

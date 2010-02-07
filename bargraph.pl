@@ -70,7 +70,11 @@ Graph parameter types:
 # For complete documentation see
 #   http://www.burningcutlery.com/derek/bargraph/
 
-# This is version 4.6.
+# This is pre-release version 4.7.
+# Changes in version 4.7, not yet released:
+#    * fixed bugs in centering in-graph legend box
+#    * added fudging for capital letters to work around gnuplot weirdness
+#      (issue #15)
 # Changes in version 4.6, released January 31, 2010:
 #    * added automatic legend placement, including automatically
 #      finding an empty spot inside the graph, via the 'inside',
@@ -865,7 +869,8 @@ if ($calc_min) {
 # matches the prefix but too unlikely.
 my $dummy_prefix = "BARGRAPH_TEMP_";
 my $legend_old_fontsz = 0;
-my $legend_text_width = 0;
+my $legend_text_widest = ""; # widest legend string
+my $legend_text_width = 0; # width of widest legend string
 my $legend_text_height = 0;
 my $legend_prefix_width = 0;
 # base to subtract prefix itself
@@ -1265,6 +1270,7 @@ if ($stackcluster && $grouplabels && $usexlabels) {
 
 # compute bounding boxes
 $graph_min_x = $sentinel;
+$graph_proper_min_x = $sentinel; # ignoring text
 $graph_max_x = 0;
 $graph_min_y = $sentinel;
 $graph_max_y = 0;
@@ -1329,15 +1335,19 @@ $figcolorins|;
     }
 
     # Process and remove dummy strings to determine legend text bounds
-    if (/^4(\s+[-\d\.]+){5}\s+([\d\.]+)(\s+[-\d\.]+){2}\s+([\d\.]+)\s+([\d\.]+)\s+\d+\s+\d+\s+$dummy_prefix(.*)$/) {
+    if (/^4(\s+[-\d\.]+){5}\s+([\d\.]+)(\s+[-\d\.]+){2}\s+([\d\.]+)\s+([\d\.]+)\s+\d+\s+\d+\s+$dummy_prefix(.*)\\001$/) {
         $legend_old_fontsz = $2;
         my $boundy = $4;
         my $boundx = $5;
-        if ($6 =~ /^\\001/) {
+        my $text = $6;
+        if ($text eq "") {
             $legend_prefix_width = $boundx;
         } else {
             $legend_text_height = $boundy if ($boundy > $legend_text_height);        
-            $legend_text_width = $boundx if ($boundx > $legend_text_width);        
+            if ($boundx > $legend_text_width) {
+                $legend_text_width = $boundx;                
+                $legend_text_widest = $text;
+            }
         }
         s/^.*$//;
     }
@@ -1370,7 +1380,7 @@ $figcolorins|;
         $text = $8; # $7 is position
         $textlen = length($text);
         $newy = $szy + &font_bb_diff_y($oldsz, $font_size);
-        $newx = $szx + $textlen * &font_bb_diff_x($oldsz, $font_size);
+        $newx = $szx + $textlen * &font_bb_diff_x($oldsz, $font_size, $text);
         s|^$prefix\s+[-\d]+\s+$oldsz\s+$orient\s+$flags\s+$szy\s+$szx|$prefix $font_face $font_size $orient $flags $newy $newx|;
     } elsif (/^4/) {
         print STDERR "WARNING: unknown font element $_";
@@ -1398,6 +1408,7 @@ $figcolorins|;
         for ($i = 0; $i <= $#coords; $i++) {
             if ($i % 2 == 0) {
                 $graph_min_x = $coords[$i] if ($coords[$i] < $graph_min_x);
+                $graph_proper_min_x = $coords[$i] if ($coords[$i] < $graph_proper_min_x);
                 $graph_max_x = $coords[$i] if ($coords[$i] > $graph_max_x);
             } else {
                 $graph_min_y = $coords[$i] if ($coords[$i] < $graph_min_y);
@@ -1474,7 +1485,8 @@ if ($use_legend && $plotcount > 1) {
     my $key_text_line_space = 157;
     my $legend_width = $border*2 + $key_box_width + $key_text_pre_space +
         $legend_text_width +
-        $maxlen*&font_bb_diff_x($legend_old_fontsz, $legend_font_size);
+        $maxlen*&font_bb_diff_x($legend_old_fontsz, $legend_font_size,
+                                $legend_text_widest);
     my $legend_height = $border*2 + $plotcount*$key_text_line_space
         # subtract off the extra spacing after bottom box
         - ($key_text_line_space - $key_box_height);
@@ -1487,18 +1499,21 @@ if ($use_legend && $plotcount > 1) {
     # try to fit inside the graph
     if ($legendx eq 'inside') {
         my $xstart = $sentinel;
+        my $lastx2 = $sentinel;
         my $ytall = $sentinel;
-        my $lastx;
         foreach $x (sort (keys %bardata)) {
             # we use $border*2 as a fudge factor to move below the top
             # line and top x tics
-            $lastx = $x;
             die "X value $x >= sentinel!\n" if ($x >= $sentinel);
             die "Y value >= sentinel!\n" if ($bardata{$x}{"y1"} >= $sentinel);
             $shift = $noupperright ? 0 : $border*3;
             printf STDERR "bar @ x1=$x,y=%d\n", $bardata{$x}{"y1"} if ($verbose);
             if ($graph_min_y + $shift + $legend_height + $border*2 < $bardata{$x}{"y1"}) {
-                $xstart = $x if ($xstart == $sentinel);
+                if ($xstart == $sentinel) {
+                    # include space between bars: use the last bad x2, or if none,
+                    # use the y axis (which is what $graph_proper_min_x should be)
+                    $xstart = ($lastx2 == $sentinel) ? $graph_proper_min_x : $lastx2;
+                }
                 $ytall = $bardata{$x}{"y1"} if ($bardata{$x}{"y1"} < $ytall);
             } else {
                 if ($xstart != $sentinel &&
@@ -1512,12 +1527,14 @@ if ($use_legend && $plotcount > 1) {
                 }
                 $xstart = $sentinel;
             }
+            $lastx2 = $bardata{$x}{"x2"};
         }
         if ($xstart != $sentinel &&
-            $lastx - $xstart > $legend_width + $border*2) {
-            printf STDERR "legend fits inside $xstart,$lastx\n" if ($verbose);
+            # $graph_max_x should be right-hand y axis
+            $graph_max_x - $xstart > $legend_width + $border*2) {
+            printf STDERR "legend fits inside $xstart,$graph_max_x\n" if ($verbose);
             # center in the space
-            $lx = ($xstart + $lastx - $legend_width)/2;
+            $lx = ($xstart + $graph_max_x - $legend_width)/2;
             $ly = (($graph_min_y + $shift) +
                    ($ytall - $legend_height - $border*2)) / 2;
         }
@@ -1532,7 +1549,8 @@ if ($use_legend && $plotcount > 1) {
         if ($legendx eq 'right') {
             $lx = $graph_max_x + $border*2;
         } elsif ($legendx eq 'center') {
-            $lx = ($graph_max_x - $graph_min_x - $legend_width) / 2 + $graph_min_x;
+            $lx = ($graph_max_x - $graph_proper_min_x - $legend_width) / 2 +
+                $graph_proper_min_x;
         } else {
             die "Invalid legendx value $legendx\n" unless ($legendx =~ /^\d+$/);
             $lx = $legendx;
@@ -1580,7 +1598,8 @@ if ($use_legend && $plotcount > 1) {
 "4 0 0 %d 0 %d %d 0.0000 4 %d %d %d %d %s\\001
 ", $legend_depth, $font_face, $legend_font_size,
 $legend_text_height + &font_bb_diff_y($legend_old_fontsz, $legend_font_size),
-$legend_text_width + $leglen*&font_bb_diff_x($legend_old_fontsz, $legend_font_size),
+$legend_text_width + $leglen*&font_bb_diff_x($legend_old_fontsz, $legend_font_size,
+  $legend[$legidx]),
 $lx+$border+$key_box_width+$key_text_pre_space,
 $ly+$border+$key_box_height+$key_text_yshift+$key_text_line_space*$i,
 $legend[$legidx];
@@ -1709,9 +1728,9 @@ sub font_bb_diff_y($,$)
     return &ceil($diff);
 }
 
-sub font_bb_diff_x($,$)
+sub font_bb_diff_x($,$,$)
 {
-    my ($oldsz, $newsz) = @_;
+    my ($oldsz, $newsz, $text) = @_;
     # This is an inadequate hack: font bounding boxes vary
     # by 15 per 2-point font size change for smaller chars, but up
     # to 30 per 2-point font size for larger chars.  We try to use a
@@ -1719,7 +1738,16 @@ sub font_bb_diff_x($,$)
     # And of course any error accumulates over larger sizes.
     # The real way is to call XTextExtents.
     my $scale = ($newsz < 8) ? 9 : 10;
-    return &ceil(($newsz - $oldsz)*$scale*$bbfudge);
+    # FIXME issue #15: even using gnuplot to add the text and then
+    # taking its bounding box is inaccurate for capital letters: is
+    # gnuplot calling XTextExtents incorrectly?  For now we have a
+    # hack to compensate.
+    my $numcaps = () = ($text =~ /[A-Z][A-Z]/g); # only consecutive caps
+    my $numwidecaps = () = ($text =~ /[MWL][A-Z]/g); # L b/c l is so narrow
+    # really hacky: but long strings of caps seem to not need as much
+    $numcaps = $numcaps/2 if ($numcaps > 4);
+    $numwidecaps = $numwidecaps/2 if ($numwidecaps > 4);
+    return &ceil(($newsz - $oldsz)*$scale*$bbfudge + $numcaps*5 + $numwidecaps*3);
 }
 
 sub ceil {

@@ -72,6 +72,7 @@ Graph parameter types:
 
 # This is pre-release version 4.7.
 # Changes in version 4.7, not yet released:
+#    * switched to boxerror to avoid the data marker for yerrorbars
 #    * added custfont= feature
 #    * fixed bugs in centering in-graph legend box
 #    * added fudging for capital letters to work around gnuplot weirdness
@@ -1164,7 +1165,7 @@ for ($g=0; $g<$groupcount; $g++) {
 if ($yerrorbars) {
     for ($g=0; $g<$groupcount; $g++) {
         for ($i=0; $i<$plotcount; $i++) {
-            print GNUPLOT ", '-' notitle with yerrorbars lt 0";
+            print GNUPLOT ", '-' notitle with boxerror lt 0";
         }
     }
 }
@@ -1339,6 +1340,7 @@ $figcolorins|;
     }
 
     if ($yerrorbars) {
+        # increase thickness of dotted line errorbars
         s|^2 1 (\S+) 1 0 0 $plot_depth 0 -1     4.000 0 (\S+) 0 0 0 2|2 1 $1 1 0 0 10 0 -1     0.000 0 $2 0 0 0 2|;
     }
 
@@ -1407,10 +1409,12 @@ $figcolorins|;
 
     # Bounds: we assume for polyline on 2nd line w/ leading space
     # We process after above changes so we don't see temp text, etc.
-    if (/^(\d+)(\s+\S+){7}\s+(\S+)/) {
+    if (/^(\d+)(\s+\S+){3}\s+(\S+)\s+(\S+)(\s+\S+){2}\s+(\S+)/) {
         $is_polyline = ($1 == 2);
-        # use fill style to rule out rectangle around entire graph
-        $is_bar = ($is_polyline && $3 > -1);
+        # to rule out rectangle around entire graph: can't use just
+        # fill style ($6) since old gnuplot doesn't fill bars so we
+        # check for any of line color, fill color, or fill style
+        $is_bar = ($is_polyline && ($3 > 0 || $4 > 0 || $6 > -1));
     }
     if ($is_polyline && /^\s+\d+/) {
         my @coords = split(' ', $_);
@@ -1450,7 +1454,8 @@ $figcolorins|;
             if ($graph_box_width == 0) {
                 $graph_box_width = $width;
             } else {
-                die "Boxes should not be different widths: report this!\n"
+                die "Boxes should not be different widths ($graph_box_width vs $width)".
+                    ": report this!\n"
                     # I've seen them be different by 1
                     unless (abs($width - $graph_box_width) < 5);
             }

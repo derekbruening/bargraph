@@ -38,3 +38,6 @@ cluster-pattern.tiff: MAGNIFY := 2
 	$(BARGRAPH) $(ARGS) -fig $< | fig2dev -L tiff -m $(MAGNIFY) > $@
 %.eps: %.perf $(BARGRAPH)
 	$(BARGRAPH) $(ARGS) -eps $< > $@
+
+clean:
+	-rm $(IMGS) *.tiff

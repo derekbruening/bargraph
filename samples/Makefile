@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Derek Bruening <iye@alum.mit.edu>
+# Copyright (C) 2009-2012 Derek Bruening <iye@alum.mit.edu>
 # http://www.burningcutlery.com/derek/bargraph/
 # http://code.google.com/p/bargraphgen/
 
@@ -16,15 +16,11 @@ all: mkoutdir $(OBJS)
 mkoutdir:
 	@(if ! test -e $(OUTDIR); then mkdir -p $(OUTDIR); fi)
 
-%.png: %.tiff
+%.png: %.ppm
+	mogrify -reverse -flatten $<
 	mogrify -resize ${SIZE}x${SIZE} -format png $<
-# older mogrify uses these names:
-# rm $@.1
-# mv $@.0 $@
-	rm $*-1.png
-	mv $*-0.png $@
-$(OUTDIR)/%.tiff: %.perf $(BARGRAPH)
-	$(BARGRAPH) -fig $< | fig2dev -L tiff -m 4 > $@
+$(OUTDIR)/%.ppm: %.perf $(BARGRAPH)
+	$(BARGRAPH) -fig $< | fig2dev -L ppm -m 4 > $@
 $(OUTDIR)/%.eps: %.perf $(BARGRAPH)
 	$(BARGRAPH) -eps $< > $@
 

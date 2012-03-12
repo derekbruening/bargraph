@@ -25,19 +25,15 @@ $(HTML): Makefile $(SRCS)
 # newer gnuplot patterns have lines that are much closer together, and w/
 # high magnification they shrink down into gray splatter (can't see individual
 # lines): x2 is much better than x4+ (x1 is blocky)
-cluster-pattern.tiff: MAGNIFY := 2
+cluster-pattern.ppm: MAGNIFY := 2
 
-%.png: %.tiff
+%.png: %.ppm
+	mogrify -reverse -flatten $<
 	mogrify -resize ${SIZE}x${SIZE} -format png $<
-# older mogrify uses these names:
-# rm $@.1
-# mv $@.0 $@
-	rm $*-1.png
-	mv $*-0.png $@
-%.tiff: %.perf $(BARGRAPH)
-	$(BARGRAPH) $(ARGS) -fig $< | fig2dev -L tiff -m $(MAGNIFY) > $@
+%.ppm: %.perf $(BARGRAPH)
+	$(BARGRAPH) $(ARGS) -fig $< | fig2dev -L ppm -m $(MAGNIFY) > $@
 %.eps: %.perf $(BARGRAPH)
 	$(BARGRAPH) $(ARGS) -eps $< > $@
 
 clean:
-	-rm $(IMGS) *.tiff
+	-rm $(IMGS) *.ppm

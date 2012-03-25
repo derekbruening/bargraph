@@ -1,0 +1,21 @@
+# clustered graph example from Derek Bruening's CGO 2005 talk
+=cluster;20% regeneration;40% regeneration;60% regeneration;80% regeneration;90% regeneration
+# green instead of gray since not planning on printing this
+colors=black,yellow,red,med_blue,light_green
+=table
+yformat=%g%%
+max=100
+=norotate
+# legend just fits between excel and powerpnt black bars!
+ylabel=Basic block cache size reduction
+# stretch it out in x direction
+xscale=1.2
+
+#          20% 40% 60% 80% 90%
+SPECFP     88  86  85  76  76
+SPECINT    80  76  70  63  57
+SPECJVM    60  49  49  44  45
+excel      93  51  40  03  03
+photoshp   61  34  27  22  23
+powerpnt   92  39  24  18  12
+winword    72  54  40  33  03

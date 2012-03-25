@@ -70,8 +70,8 @@ Graph parameter types:
 # For complete documentation see
 #   http://www.burningcutlery.com/derek/bargraph/
 
-# This is pre-release version 4.7.
-# Changes in version 4.7, not yet released:
+# This is version 4.7.
+# Changes in version 4.7, released March 25, 2012:
 #    * added xscale= and yscale= to properly scale graphs on
 #      gnuplot 4.2+.  Note that this may change absolute coordinates
 #      in existing graphs.

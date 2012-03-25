@@ -1,7 +1,5 @@
 BARGRAPH := ../bargraph.pl
-# avoid gnuplot bug that truncates x labels if graph scaled
-ARGS := -gnuplot-path /home/derek/bargraph/gnuplot-4.2.0-derek/install/bin/gnuplot
-#ARGS := -gnuplot-path /home/derek/bargraph/gnuplot-4.0.0/install/bin/gnuplot
+ARGS := 
 MAGNIFY := 4
 
 SIZE := 700

@@ -7,7 +7,7 @@ max=100
 =norotate
 ylabel=Basic block cache size reduction
 # stretch it out in x direction
-extraops=set size 1.2,1
+xscale=1.2
 
 #          20% 40% 60% 80% 90%
 SPECFP     88  86  85  76  76

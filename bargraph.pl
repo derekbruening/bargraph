@@ -3,7 +3,7 @@
 # bargraph.pl: a bar graph builder that supports stacking and clustering.
 # Modifies gnuplot's output to fill in bars and add a legend.
 #
-# Copyright (C) 2004-2010 Derek Bruening <iye@alum.mit.edu>
+# Copyright (C) 2004-2012 Derek Bruening <iye@alum.mit.edu>
 # http://www.burningcutlery.com/derek/bargraph/
 # http://code.google.com/p/bargraphgen/
 #
@@ -72,6 +72,9 @@ Graph parameter types:
 
 # This is pre-release version 4.7.
 # Changes in version 4.7, not yet released:
+#    * added xscale= and yscale= to properly scale graphs on
+#      gnuplot 4.2+.  Note that this may change absolute coordinates
+#      in existing graphs.
 #    * switched to boxerror to avoid the data marker for yerrorbars
 #    * added custfont= feature
 #    * fixed bugs in centering in-graph legend box
@@ -349,6 +352,17 @@ $barsinbg = 0;
 # sentinel value
 $sentinel = 999999;
 
+# scaling support
+# targets gnuplot 4.2+ where "set size x,y" scales the chart but not
+# the canvas and so ends up truncated: instead we need to set the size
+# of the canvas up front (which works on older gnuplot too).
+$canvas_default_x = 5.0;
+$canvas_default_y = 3.0;
+$canvas_min = 2;
+$canvas_max = 99;
+$xscale = 1.0;
+$yscale = 1.0;
+
 while (<IN>) {
     next if (/^\#/ || /^\s*$/);
     # line w/ = is a control line (except =>)
@@ -541,6 +555,26 @@ while (<IN>) {
             $barwidth = $1;
         } elsif (/^logscaley=(.+)/) {
             $logscaley = $1;
+        } elsif (/^xscale=(.+)/) {
+            $xscale = $1;
+            # gnuplot fig terminal imposes some limits
+            if ($xscale*$canvas_default_x < $canvas_min) {
+                $xscale = $canvas_min / $canvas_default_x;
+                print STDERR "WARNING: minimum scale exceeded: setting to min $xscale\n";
+            } elsif ($xscale*$canvas_default_x > $canvas_max) {
+                $xscale = $canvas_max / $canvas_default_x;
+                print STDERR "WARNING: maximum scale exceeded: setting to max $xscale\n";
+            }
+        } elsif (/^yscale=(.+)/) {
+            $yscale = $1;
+            # gnuplot fig terminal imposes some limits
+            if ($yscale*$canvas_default_y < $canvas_min) {
+                $yscale = $canvas_min / $canvas_default_y;
+                print STDERR "WARNING: minimum scale exceeded: setting to min $yscale\n";
+            } elsif ($yscale*$canvas_default_y > $canvas_max) {
+                $yscale = $canvas_max / $canvas_default_y;
+                print STDERR "WARNING: maximum scale exceeded: setting to max $yscale\n";
+            }
         } else {
             die "Unknown command $_\n";
         }
@@ -1109,8 +1143,9 @@ if ($debug_seegnuplot) {
 printf GNUPLOT "
 set title '%s'
 # can also pass \"fontsize 12\" to fig terminal
-set terminal fig color depth %d
-", $title, $plot_depth;
+set terminal fig color depth %d size %4.2f %4.2f metric inches
+", $title, $plot_depth, $xscale*$canvas_default_x,
+    $yscale*$canvas_default_y;
 
 printf GNUPLOT "
 set xlabel '%s' %s%s
@@ -1510,11 +1545,14 @@ if ($use_legend && $plotcount > 1) {
     my $ly = $sentinel;
     my $lx = $sentinel;
 
+    # decision: do not scale by $scalex,$scaley b/c font not scaled elsewhere
+
     # try to fit inside the graph
     if ($legendx eq 'inside') {
         my $xstart = $sentinel;
         my $lastx2 = $sentinel;
         my $ytall = $sentinel;
+        printf STDERR "legend bounds are $legend_width,$legend_height\n" if ($verbose);
         foreach $x (sort (keys %bardata)) {
             # we use $border*2 as a fudge factor to move below the top
             # line and top x tics

@@ -5,8 +5,6 @@
 colors=med_blue,black,yellow,red,cyan,dark_green
 =nolegoutline
 legendfill=
-legendx=5000
-legendy=500
 =table
 =norotate
 =nogridy
@@ -17,7 +15,7 @@ xlabel=Iteration
 # move label closer to x axis, since no x tics
 xlabelshift=0,1
 ylabel=Tetrahedral Count
-extraops=set size 1,1.4
+yscale=1.4
 max=460799
 
   1   414268   20694    5581   19729     347     180

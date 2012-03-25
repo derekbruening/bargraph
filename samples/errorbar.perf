@@ -2,7 +2,6 @@
 =cluster Aggressive Backoff Eruption Greedy Karma Kindergarten Polka Priority 
 title=Genome
 ylabel=Execution Time (s.)
-extraops=set size 0.8
 fontsz=12
 =nogridy
 legendx=right

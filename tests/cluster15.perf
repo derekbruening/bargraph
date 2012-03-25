@@ -4,11 +4,11 @@
 yformat=%g%%
 max=100
 =norotate
-legendx=5200
+legendx=5250
 legendy=1450
 ylabel=Basic block cache size reduction
 # stretch it out in x direction
-extraops=set size 1.2,1
+xscale=1.2
 =barsinbg
 #=legendinbg
 legendfill=grey

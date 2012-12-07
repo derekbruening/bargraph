@@ -798,6 +798,9 @@ if ($use_mean) {
                 if ($harsum[$i] == 0);
             $harmean[$i] = $harnum[$i] / $harsum[$i];
         }
+        if ($datasub != 0) {
+            $harmean[$i] -= $datasub;
+        }
         if ($datascale != 1) {
             $harmean[$i] *= $datascale;
         }

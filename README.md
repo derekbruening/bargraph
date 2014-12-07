@@ -31,6 +31,10 @@ The primary features include:
   floating point benchmark groups 
 - Error bar support 
 
+A [tarball package](https://bintray.com/derekbruening/bargraph/bargraph)
+that includes the bargraph script and sample graphs is [available on
+BinTray](https://bintray.com/derekbruening/bargraph/bargraph).
+
 See [the official project home
 page](http://www.burningcutlery.com/derek/bargraph/) for documentation and
 examples.

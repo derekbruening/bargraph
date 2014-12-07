@@ -3,9 +3,9 @@ Modifies gnuplot's output to fill in bars and add a legend.
 For complete documentation see
   http://www.burningcutlery.com/derek/bargraph/
 
-Copyright (C) 2004-2009 Derek Bruening <iye@alum.mit.edu>
+Copyright (C) 2004-2014 Derek Bruening <iye@alum.mit.edu>
 http://www.burningcutlery.com/derek/bargraph/
-http://code.google.com/p/bargraphgen/
+https://github.com/derekbruening/bargraph
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

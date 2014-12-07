@@ -1,6 +1,6 @@
-# Copyright (C) 2009-2012 Derek Bruening <iye@alum.mit.edu>
+# Copyright (C) 2009-2014 Derek Bruening <iye@alum.mit.edu>
 # http://www.burningcutlery.com/derek/bargraph/
-# http://code.google.com/p/bargraphgen/
+# https://github.com/derekbruening/bargraph
 
 OUTDIR := ../../build/samples
 

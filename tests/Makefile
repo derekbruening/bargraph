@@ -11,14 +11,8 @@ HTML := all.html
 
 default: $(IMGS) $(HTML)
 
-$(HTML): Makefile $(SRCS)
-	@(rm -f $(HTML); echo -e "<body bgcolor=\"#bbeeee\">\n" >> $(HTML); \
-	for i in $(SRCS); do \
-	echo -e "<p>$$i</p><table><tr>\n" >> $(HTML); \
-	echo -e "<td><img src=\"$${i/perf/png}\"></td><td>&nbsp;</td>\n" >> $(HTML); \
-	echo -e "<td><img src=\"prev/$${i/perf/png}\"></td>\n" >> $(HTML); \
-	echo -e "</tr></table></body>\n" >> $(HTML); \
-	done)
+$(HTML): html.pl Makefile $(SRCS)
+	./$< $(SRCS) > $(HTML)
 
 # newer gnuplot patterns have lines that are much closer together, and w/
 # high magnification they shrink down into gray splatter (can't see individual

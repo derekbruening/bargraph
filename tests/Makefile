@@ -12,7 +12,7 @@ HTML := all.html
 default: $(IMGS) $(HTML)
 
 $(HTML): Makefile $(SRCS)
-	@(rm $(HTML); echo -e "<body bgcolor=\"#bbeeee\">\n" >> $(HTML); \
+	@(rm -f $(HTML); echo -e "<body bgcolor=\"#bbeeee\">\n" >> $(HTML); \
 	for i in $(SRCS); do \
 	echo -e "<p>$$i</p><table><tr>\n" >> $(HTML); \
 	echo -e "<td><img src=\"$${i/perf/png}\"></td><td>&nbsp;</td>\n" >> $(HTML); \
@@ -34,4 +34,4 @@ cluster-pattern.ppm: MAGNIFY := 2
 	$(BARGRAPH) $(ARGS) -eps $< > $@
 
 clean:
-	-rm $(IMGS) *.ppm
+	rm -f $(IMGS) *.ppm

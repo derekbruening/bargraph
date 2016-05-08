@@ -421,6 +421,8 @@ while (<IN>) {
         } elsif (/^colors=(.*)/) {
             $custom_colors = 1;
             @custom_color = split(',', $1);
+	} elsif (/^colorset=(.*)/) {
+	    @colorset = split(',', $1);
         } elsif (/^=table/) {
             $table = 1;
             if (/^=table(.)/) {
@@ -584,6 +586,8 @@ while (<IN>) {
     # compatibility checks
     die "Graphs of type stacked or stackcluster do not suport yerrorbars"
         if ($yerrorbars  && ($stacked || $stackcluster));
+    die "Both color= and colorset= cannot be set"
+	if (@colorset && @custom_color);
 
     # this line must have data on it!
     
@@ -942,6 +946,15 @@ $colornm{'white'}=7;
 # the order here is the order for 9+ datasets
 $basefigcolor=32;
 $numfigclrs=0;
+
+# custom colorset
+if (@colorset) {
+    foreach my $color (@colorset) {
+	$figcolor[$numfigclrs] = $color;
+	$numfigclrs++;
+    }
+}
+
 $figcolor[$numfigclrs]="#000000"; $fig_black=$colornm{'black'}=$basefigcolor + $numfigclrs++;
 $figcolor[$numfigclrs]="#aaaaff"; $fig_light_blue=$colornm{'light_blue'}=$basefigcolor + $numfigclrs++;
 $figcolor[$numfigclrs]="#00aa00"; $fig_dark_green=$colornm{'dark_green'}=$basefigcolor + $numfigclrs++;
@@ -989,6 +1002,11 @@ if ($patterns) {
         for ($i=0; $i<$colorcount; $i++) {
             $fillcolor[$i]=$colornm{$custom_color[$i]};
         }
+
+    } elsif (@colorset) {
+	for (my $i = 0; $i < $colorcount; $i++) {
+            $fillcolor[$i] = $basefigcolor + ($i % $num_nongrayscale);
+	}
     } else {
         # color schemes that I tested as providing good contrast when
         # printed on a non-color printer.

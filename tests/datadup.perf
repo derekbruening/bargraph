@@ -1,0 +1,77 @@
+# Data from a run of SPECCPU 2006 bzip2 under the LLVM esan working-set tool.
+=stacked;1x;4x;16x;Total
+=stackabs
+=datadup_merge
+# Colors from colorbrewer
+colorset=#2171b5,#6baed6,#bdd7e7,#eff3ff
+xlabel=Snapshot
+ylabel=Working set (MB)
+ylabelshift=1,0
+column=5
+=norotate
+xscale=1.4
+intra_space_mul=0.001
+=noupperright
+=nogridy
+# Convert from 64-byte cache lines to MB
+#KB:datascale=0.0625
+datascale=0.00006104
+
+#==bzip2_base.clang-64bit==13791== Samples array #4 at frequency 5120 ms
+   0      320 MB (  5257437 cache lines)
+   1       36 MB (   590776 cache lines)
+   2       35 MB (   581624 cache lines)
+   3       35 MB (   581623 cache lines)
+   4       35 MB (   581589 cache lines)
+   5       35 MB (   581602 cache lines)
+   6       35 MB (   581500 cache lines)
+   7       35 MB (   581681 cache lines)
+   8       35 MB (   581515 cache lines)
+   9      295 MB (  4839872 cache lines)
+  10      206 MB (  3381369 cache lines)
+  11       33 MB (   549102 cache lines)
+  12       33 MB (   549094 cache lines)
+  13       32 MB (   536422 cache lines)
+  14       33 MB (   549094 cache lines)
+  15       33 MB (   548005 cache lines)
+  16       32 MB (   537596 cache lines)
+  17       33 MB (   549175 cache lines)
+  18       32 MB (   536420 cache lines)
+  19       33 MB (   548711 cache lines)
+  20       32 MB (   536893 cache lines)
+  21      297 MB (  4877098 cache lines)
+  22      165 MB (  2705362 cache lines)
+  23       31 MB (   521132 cache lines)
+  24       30 MB (   505142 cache lines)
+  25       31 MB (   521211 cache lines)
+  26       30 MB (   505141 cache lines)
+  27       31 MB (   521208 cache lines)
+  28       30 MB (   505146 cache lines)
+  29       31 MB (   521130 cache lines)
+  30       30 MB (   505216 cache lines)
+  31       30 MB (   505146 cache lines)
+  32       31 MB (   521134 cache lines)
+  33       30 MB (   505147 cache lines)
+  34      297 MB (  4875131 cache lines)
+
+=multi
+datadup=4
+#==bzip2_base.clang-64bit==13791== Samples array #5 at frequency 20 sec
+   0      327 MB (  5361696 cache lines)
+   4      131 MB (  2148480 cache lines)
+   8      309 MB (  5063967 cache lines)
+  12      118 MB (  1939092 cache lines)
+  16      117 MB (  1928378 cache lines)
+  20      306 MB (  5027376 cache lines)
+  24      106 MB (  1743526 cache lines)
+  28      105 MB (  1727463 cache lines)
+
+=multi
+datadup=16
+#==bzip2_base.clang-64bit==13791== Samples array #6 at frequency 81 sec
+   0      342 MB (  5615643 cache lines)
+  16      306 MB (  5027376 cache lines)
+
+=multi
+datadup=35
+   0      345 MB ( 5665639 cache lines)

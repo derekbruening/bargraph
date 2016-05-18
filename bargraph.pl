@@ -69,7 +69,12 @@ Graph parameter types:
 #   name) each cluster with multimulti=
 # For complete documentation see
 #   http://www.burningcutlery.com/derek/bargraph/
-
+#
+# This is version 4.8.
+# Changes in version 4.8, released January 2, 2017:
+#    * added datadup= and =datadup_merge for repeated identical values.
+#    * added colorset= for specifying colors via a list of rgb values.
+#    * fixed gnuplut 5.0 problems.
 # This is version 4.7.
 # Changes in version 4.7, released March 25, 2012:
 #    * added xscale= and yscale= to properly scale graphs on
@@ -310,6 +315,8 @@ $datasub = 0;
 $percent = 0;
 $base1 = 0;
 $yformat = "%.0f";
+$datadup = 1; # 1 means no duplication
+$datadup_merge = 0;
 
 $logscaley = 0;
 
@@ -367,9 +374,9 @@ $yscale = 1.0;
 
 while (<IN>) {
     next if (/^\#/ || /^\s*$/);
-    # line w/ = is a control line (except =>)
+    # line w/ = is a control line (except => or ==)
     # FIXME i#13: switch to GetOptions
-    if (/=[^>]/) {
+    if (/(^|\w)=[^>=]/) {
         if (/^=cluster(.)/) {
             $splitby = $1;
             s/=cluster$splitby//;
@@ -416,6 +423,10 @@ while (<IN>) {
             } else {
                 $dataset++;
             }
+        } elsif (/^datadup=(.*)/) {
+            $datadup = $1;
+        } elsif (/^=datadup_merge/) {
+            $datadup_merge = 1;
         } elsif (/^=patterns/) {
             $patterns = 1;
         } elsif (/^=color_per_datum/) {
@@ -590,6 +601,8 @@ while (<IN>) {
         if ($yerrorbars  && ($stacked || $stackcluster));
     die "Both color= and colorset= cannot be set"
 	if (@colorset && @custom_color);
+    die "datadup_merge is not supported with patterns"
+        if ($patterns && $datadup_merge);
 
     # this line must have data on it!
     
@@ -711,15 +724,26 @@ while (<IN>) {
         print STDERR "WARNING: non-numeric value \"$val_string\" for $bmark\n";
     }
 
-    $val = get_val($val_string, $dataset);
-    if (($stacked || $stackcluster) && $dataset < $stackcount-1 &&
-        !$stacked_absolute) {
-        # need to add prev bar to stick above
-        # remember that we're walking backward
-        $entry{$groupset,$bmark,$dataset+1} =~ /([-\d\.]+)/;
-        $val += $1;
+    $dupbar_split{$groupset,$dataset} = $datadup;
+    for ($i = 0; $i < $datadup; $i++) {
+        $val = get_val($val_string, $dataset);
+        if ($i > 0) {
+            die "datadup>1 requires numeric names: $bmark\n" unless $bmark =~ /^\d+$/;
+            $bmark++;
+            if (!defined($names{$bmark})) {
+                $names{$bmark} = $bmark;
+                $order{$bmark} = $bmarks_seen++;
+            }
+        }
+        if (($stacked || $stackcluster) && $dataset < $stackcount-1 &&
+            !$stacked_absolute) {
+            # need to add prev bar to stick above
+            # remember that we're walking backward
+            $entry{$groupset,$bmark,$dataset+1} =~ /([-\d\.]+)/;
+            $val += $1;
+        }
+        $entry{$groupset,$bmark,$dataset} = "$val";
     }
-    $entry{$groupset,$bmark,$dataset} = "$val";
 
   nextiter:
     if (!defined($names{$bmark})) {
@@ -1234,6 +1258,9 @@ if ($yerrorbars) {
 print GNUPLOT "\n";
 for ($g=0; $g<$groupcount; $g++) {
     for ($i=0; $i<$plotcount; $i++) {
+        if ($datadup_merge) {
+            $dupbar[$g*$plotcount + $i] = $dupbar_split{$g,$i};
+        }
         $line = 0;
         foreach $b (@sorted) {
             # support missing values in some datasets
@@ -1391,7 +1418,30 @@ $figcolorins|;
                 $color_idx = $color_per_datum ? ($itemcount++ % ($#fillcolor+1)) :
                     $set;
                 s|^2 1 \S+ \S+ (\S+) \1 $plot_depth 0 -1 +([0-9]+).000|2 1 0 1 -1 $fillcolor[$color_idx] $depth[$set] 0 $fillstyle[$color_idx]     0.000|;
+                if ($dupbar[$set] > 1) {
+                    # Expand the bar to cover $dupbar[$set] bars.
+                    # XXX: We do not support this for the $xlate cases (elsif below).
+                    # We also don't support this for pattern fills.
+                    print FIG2DEV "## Merged $dupbar[$set] bars for set $set\n";
+                    my $line1 = $_;
+                    my $line2 = <FIG> || die "Unexpected EOF handling datadup\n";
+                    print FIG2DEV "## Line2 was $line2";
+                    for ($i = 0; $i < 2*($dupbar[$set]-1); $i++) {
+                        $_ = <FIG> || die "Unexpected EOF handling datadup\n";
+                        print FIG2DEV "## Skipping $_";
+                    }
+                    # We assume the points are counter-clockwise from the top left.
+                    /^\s+\d+\s+\d+\s+\d+\s+\d+\s+(\d+\s+\d+\s+)(\d+\s+\d+\s+)/ ||
+                        die "Failed to match expected format for datadup: $_\n";
+                    $bottom_right = $1;
+                    $top_right = $2;
+                    $line2 =~ s/^(\s+\d+\s+\d+\s+\d+\s+\d+\s+)\d+\s+\d+\s+\d+\s+\d+\s+/\1$bottom_right$top_right/;
+                    print FIG2DEV $line1;
+                    print FIG2DEV $line2;
+                    next;
+                }
             } elsif (defined($xlate{$_})) {
+                die "datadup not supported with this type of graph" if ($datadup > 1);
                 $repeat = $xlate{$_};
                 $color_idx = $color_per_datum ? ($itemcount++ % ($#fillcolor+1)) :
                     $repeat;

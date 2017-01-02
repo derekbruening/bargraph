@@ -3,7 +3,7 @@
 # bargraph.pl: a bar graph builder that supports stacking and clustering.
 # Modifies gnuplot's output to fill in bars and add a legend.
 #
-# Copyright (C) 2004-2014 Derek Bruening <iye@alum.mit.edu>
+# Copyright (C) 2004-2017 Derek Bruening <iye@alum.mit.edu>
 # http://www.burningcutlery.com/derek/bargraph/
 # https://github.com/derekbruening/bargraph
 #
@@ -240,6 +240,8 @@ $gnuplot_version =~ /gnuplot ([\d\.]+)/;
 $gnuplot_version = $1;
 $gnuplot_uses_offset = 1;
 $gnuplot_uses_offset = 0 if ($gnuplot_version <= 4.0);
+# For gnplot 5.x use "dashtype" or "dt", else use "linetype" or "lt".
+$linetype = ($gnuplot_version < 5.0) ? "lt" : "dt";
 
 # support for clusters and stacked
 $stacked = 0;
@@ -544,7 +546,7 @@ while (<IN>) {
         } elsif (/^=stackabs/) {
             $stacked_absolute = 1;
         } elsif (/^horizline=(.+)/) {
-            $lineat .= "f(x)=$1,f(x) notitle lt -1,"; # put black line at $1
+            $lineat .= "f(x)=$1,f(x) notitle $linetype -1,"; # put black line at $1
         } elsif (/^=barsinbg/) {
             $barsinbg = 1;
         } elsif (/^=legendinbg/) {
@@ -905,6 +907,7 @@ if ($calc_min) {
             $min = int($min - 1);
         }
         $ymin = $min;
+        # This remains "lt", not $linetype.
         $lineat .= "f(x)=0,f(x) notitle lt -1,"; # put black line at 0
     } # otherwise leave ymin at 0
 } # otherwise leave ymin at user-specified value
@@ -1176,6 +1179,7 @@ set format y \"%s\"
 ", $xlabel, $gnuplot_uses_offset ? "offset " : "", $xlabelshift,
 $ylabel, $gnuplot_uses_offset ? "offset " : "", $ylabelshift,
 $xticsopts, $xtics, $yformat;
+# Fix emacs mis-parse: "
 
 printf GNUPLOT "
 set boxwidth %s
@@ -1208,12 +1212,13 @@ for ($g=0; $g<$groupcount; $g++) {
             printf GNUPLOT ", ";
         }
         if ($patterns) {
-            # newer gnuplot uses colors by default so request black w/ "lt -1"
-            # (xref issue 3)
+            # Newer gnuplot uses colors by default so request black w/ "lt -1"
+            # (xref issue 3).
+            # This remains "lt", not $linetype.
             printf GNUPLOT "'-' notitle with boxes fs pattern %d lt -1",
                 ($i % $max_patterns);
         } else {
-            printf GNUPLOT "'-' notitle with boxes lt %d", $i+3;
+            printf GNUPLOT "'-' notitle with boxes $linetype %d", $i+3;
         }
     }
 }
@@ -1221,6 +1226,7 @@ for ($g=0; $g<$groupcount; $g++) {
 if ($yerrorbars) {
     for ($g=0; $g<$groupcount; $g++) {
         for ($i=0; $i<$plotcount; $i++) {
+            # This remains "lt", not $linetype.
             print GNUPLOT ", '-' notitle with boxerror lt 0";
         }
     }

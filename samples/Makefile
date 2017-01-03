@@ -5,6 +5,7 @@
 OUTDIR := ../../build/samples
 
 BARGRAPH := ../bargraph.pl
+ARGS :=
 
 SIZE := 700
 
@@ -20,9 +21,9 @@ mkoutdir:
 	mogrify -reverse -flatten $<
 	mogrify -resize ${SIZE}x${SIZE} -format png $<
 $(OUTDIR)/%.ppm: %.perf $(BARGRAPH)
-	$(BARGRAPH) -fig $< | fig2dev -L ppm -m 4 > $@
+	$(BARGRAPH) $(ARGS) -fig $< | fig2dev -L ppm -m 4 > $@
 $(OUTDIR)/%.eps: %.perf $(BARGRAPH)
-	$(BARGRAPH) -eps $< > $@
+	$(BARGRAPH) $(ARGS) -eps $< > $@
 
 clean:
 	-rm $(OBJS)

@@ -11,6 +11,7 @@ foreach my $perf (@files) {
     $img =~ s/\.perf$/.png/;
     print "<p>$perf</p><table><tr>\n";
     print "<td><img src=\"$img\"></td><td>&nbsp;</td>\n";
+    print "<td><img src=\"prior_release/$img\"></td><td>&nbsp;</td>\n";
     print "</tr></table>\n";
 }
 print "</body>\n";

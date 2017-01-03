@@ -1,4 +1,5 @@
 *.eps
 *.html
 *.png
+!prior_release/*.png
 *.ppm

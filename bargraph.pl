@@ -434,8 +434,8 @@ while (<IN>) {
         } elsif (/^colors=(.*)/) {
             $custom_colors = 1;
             @custom_color = split(',', $1);
-	} elsif (/^colorset=(.*)/) {
-	    @colorset = split(',', $1);
+        } elsif (/^colorset=(.*)/) {
+            @colorset = split(',', $1);
         } elsif (/^=table/) {
             $table = 1;
             if (/^=table(.)/) {
@@ -600,7 +600,7 @@ while (<IN>) {
     die "Graphs of type stacked or stackcluster do not suport yerrorbars"
         if ($yerrorbars  && ($stacked || $stackcluster));
     die "Both color= and colorset= cannot be set"
-	if (@colorset && @custom_color);
+        if (@colorset && @custom_color);
     die "datadup_merge is not supported with patterns"
         if ($patterns && $datadup_merge);
 
@@ -977,8 +977,8 @@ $numfigclrs=0;
 # custom colorset
 if (@colorset) {
     foreach my $color (@colorset) {
-	$figcolor[$numfigclrs] = $color;
-	$numfigclrs++;
+        $figcolor[$numfigclrs] = $color;
+        $numfigclrs++;
     }
 }
 
@@ -1031,9 +1031,9 @@ if ($patterns) {
         }
 
     } elsif (@colorset) {
-	for (my $i = 0; $i < $colorcount; $i++) {
+        for (my $i = 0; $i < $colorcount; $i++) {
             $fillcolor[$i] = $basefigcolor + ($i % $num_nongrayscale);
-	}
+        }
     } else {
         # color schemes that I tested as providing good contrast when
         # printed on a non-color printer.
